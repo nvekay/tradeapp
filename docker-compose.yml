@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   backend:
@@ -10,6 +10,8 @@ services:
       - "8000:8000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - db_data:/app/db
 
   frontend:
     build: ./frontend
@@ -18,3 +20,6 @@ services:
       - "3000:80"
     depends_on:
       - backend
+
+volumes:
+  db_data:
