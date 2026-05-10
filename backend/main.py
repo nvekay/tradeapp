@@ -19,6 +19,32 @@ with engine.connect() as conn:
         except Exception:
             pass
 
+# ── Auto-seed admin user from env vars ──────────────────────────────────────
+ADMIN_EMAIL    = os.getenv("ADMIN_EMAIL")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+
+if ADMIN_EMAIL and ADMIN_PASSWORD:
+    from sqlalchemy.orm import Session as DBSession
+    from auth import get_password_hash
+    with DBSession(engine) as db:
+        existing = db.query(models.User).filter(models.User.email == ADMIN_EMAIL).first()
+        if not existing:
+            user = models.User(
+                email=ADMIN_EMAIL,
+                hashed_password=get_password_hash(ADMIN_PASSWORD)
+            )
+            db.add(user)
+            db.commit()
+            print(f"[seed] Admin user created: {ADMIN_EMAIL}")
+        else:
+            # Update password if it changed
+            new_hash = get_password_hash(ADMIN_PASSWORD)
+            if existing.hashed_password != new_hash:
+                existing.hashed_password = new_hash
+                db.commit()
+                print(f"[seed] Admin password updated: {ADMIN_EMAIL}")
+# ─────────────────────────────────────────────────────────────────────────────
+
 app = FastAPI(title="Trading Journal")
 
 app.add_middleware(
