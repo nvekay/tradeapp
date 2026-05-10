@@ -36,7 +36,7 @@ if _ADMIN_EMAIL and _ADMIN_PASSWORD:
             _db.commit()
             print("[seed] synced admin password:", _ADMIN_EMAIL)
 
-app = FastAPI(title="Trading Journal")
+app = FastAPI(title="tradestat")
 
 app.add_middleware(
     CORSMiddleware,
