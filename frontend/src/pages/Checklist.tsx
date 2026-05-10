@@ -13,74 +13,62 @@ interface Section { id: string; title: string; icon: string; items: CheckItem[] 
 
 const SECTIONS: Section[] = [
   {
-    id: 'day', title: 'Фильтры дня', icon: '📅',
+    id: 's1', title: 'ЭТАП 1: Анализ контекста (Daily)', icon: '📅',
     items: [
-      { id: 'd1', label: 'Сегодня не полностью красный день по новостям USD' },
-      { id: 'd3', label: 'Просадка за текущую неделю не превышает 4%' },
-      { id: 'd4', label: 'За сегодняшнюю сессию не было ещё 2 стоп-лосса и не было 1 тейк-профита' },
+      { id: '1_1', label: 'Определить долгосрочный тренд', sub: 'Куда движется цена? (Восходящий или нисходящий поток/Order Flow)' },
+      { id: '1_2', label: 'Отметить ближайшую зону POI (Point of Interest)', sub: 'Дневной имбаланс (FVG) или Ордерблок / зона Sell-to-Buy / Buy-to-Sell' },
+      { id: '1_3', label: 'Определить цель (Target)', sub: 'Ближайший значимый максимум или минимум (например, ATH)' },
+      { id: '1_4', label: 'Оценить положение цены', sub: 'Находится ли цена в зоне Дискаунта или Премиума относительно текущего импульса' },
     ],
   },
   {
-    id: 'time', title: 'Торговое время', icon: '⏰',
+    id: 's2', title: 'ЭТАП 2: Подтверждение среднего срока (4H)', icon: '🔎',
     items: [
-      { id: 't1', label: 'Время входа — открытие Лондонской сессии', sub: 'Летнее: 10:00–12:00 МСК · Зимнее: 11:00–13:00 МСК' },
-      { id: 't2', label: 'NY-сессию не торгую' },
+      { id: '2_1', label: 'Дождаться захода цены в дневную POI', sub: 'Не предпринимать действий до теста зоны' },
+      { id: '2_2', label: 'Найти подтверждение на 4 часах', sub: 'Инверсия FVG, формирование новой POI, либо слом структуры/поглощение' },
+      { id: '2_3', label: 'ВАЖНО: Не переходить на M15', sub: 'Пока 4H не показал «силу» (дисбаланс) в нужную сторону' },
     ],
   },
   {
-    id: 'ctx', title: 'Контекст (топ-вниз анализ)', icon: '📈',
+    id: 's3', title: 'ЭТАП 3: Точка входа (M15)', icon: '🎯',
     items: [
-      { id: 'c1', label: 'На 1D определил направление дня (бычье / медвежье)' },
-      { id: 'c2', label: 'На 4H определил среднесрочный контекст и актуальный POI 4H' },
-      { id: 'c3', label: 'На 1H определил краткосрочный OF (Order Flow)' },
-      { id: 'c4', label: 'OF на 1H совпадает с направлением на 4H и 1D' },
-      { id: 'c5', label: 'Цена находится вблизи POI 4H или POI 1H', sub: 'обязательно наличие хотя бы обоих ТФ вместе' },
+      { id: '3_1', label: 'Дождаться теста 4-часовой зоны', sub: 'Вход осуществляется внутри среднего POI' },
+      { id: '3_2', label: 'Выбрать торговую модель', sub: 'Модель QM (слом через перехай/перелой) или AMD (Накопление ➔ Манипуляция ➔ Расширение)' },
+      { id: '3_3', label: 'Проверка ликвидности', sub: 'Оставила ли цена «полку» (цель) и сняла ли она ликвидность перед входом (защита)' },
     ],
   },
   {
-    id: 'entry-base', title: 'Точка входа', icon: '🎯',
+    id: 's4', title: 'ЭТАП 4: Управление сделкой', icon: '🛡️',
     items: [
-      { id: 'e1', label: 'Вхожу от POI краткосрочного ТФ (1H)' },
-      { id: 'e2', label: 'На M15/M5 подтверждён вход' },
+      { id: '4_1', label: 'Установка стоп-лосса', sub: 'За ключевой структурный экстремум m15 или за 4H манипуляцию' },
+      { id: '4_2', label: 'Расчет Risk/Reward (R:R)', sub: 'Минимум 1:2 или 1:3 (статистический выход)' },
+      { id: '4_3', label: 'Тайминг', sub: 'Сделка должна соответствовать торговым сессиям (Лондон или Нью-Йорк)' },
+      { id: '4_4', label: 'Перевод в безубыток', sub: 'После снятия первого значимого таргета (ликвидности по тренду)' },
     ],
   },
   {
-    id: 'risk', title: 'Риск-менеджмент', icon: '🛡️',
+    id: 's5', title: '⚠️ Главные «НЕ»', icon: '🛑',
     items: [
-      { id: 'r1', label: 'Риск на сделку — 1% от депозита' },
-      { id: 'r3', label: 'Тейк-профит определён заранее' },
+      { id: '5_1', label: 'НЕ входи агрессивно на m15 сразу при касании дневного уровня' },
+      { id: '5_2', label: 'НЕ пытайся шортить в лонговой зоне только потому, что цена «не дает лонговать»' },
+      { id: '5_3', label: 'НЕ игнорируй отсутствие имбалансов', sub: 'Если их нет, цена пойдет выносить стопы, а не разворачиваться' },
     ],
   },
-]
-
-const VARIANT_A: CheckItem[] = [
-  { id: 'a1', label: 'Произошёл ресвип уровня' },
-  { id: 'a2', label: 'Сформировался OB (Order Block)' },
-  { id: 'a3', label: 'Свеча(и) без фитилей' },
-]
-
-const VARIANT_B: CheckItem[] = [
-  { id: 'b1', label: 'Сформировался OB (Order Block)' },
-  { id: 'b2', label: 'Сформировался IFVG' },
-  { id: 'b3', label: 'Свеча(и) без фитилей' },
 ]
 
 export default function Checklist() {
   const [checked, setChecked] = useState<Set<string>>(new Set())
-  const [variant, setVariant] = useState<'A' | 'B' | null>(null)
 
   const toggle = (id: string) =>
     setChecked(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s })
 
-  const variantItems = variant === 'A' ? VARIANT_A : variant === 'B' ? VARIANT_B : []
-  const allRequired = [...SECTIONS.flatMap(s => s.items), ...variantItems]
-  const needVariant = variant === null
-  const totalCount = allRequired.length + (needVariant ? 1 : 0)
+  const allRequired = SECTIONS.flatMap(s => s.items)
+  const totalCount = allRequired.length
   const doneCount = allRequired.filter(i => checked.has(i.id)).length
-  const allDone = !needVariant && doneCount === allRequired.length
+  const allDone = doneCount === totalCount
   const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
 
-  const reset = () => { setChecked(new Set()); setVariant(null) }
+  const reset = () => { setChecked(new Set()) }
 
   return (
     <div style={{ maxWidth: 680, margin: '0 auto' }}>
@@ -117,34 +105,6 @@ export default function Checklist() {
         <SectionBlock key={section.id} section={section} checked={checked} onToggle={toggle} />
       ))}
 
-      {/* Variant picker */}
-      <div style={{ background: C.card, border: `1px solid ${variant ? 'rgba(124,115,255,0.35)' : C.border}`, borderRadius: 14, padding: '20px 22px', marginBottom: 12 }}>
-        <div style={{ fontSize: 14, color: C.muted, marginBottom: 14, fontWeight: 600 }}>Выбери вариант входа</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: variant ? 18 : 0 }}>
-          {(['A', 'B'] as const).map(v => (
-            <button key={v} onClick={() => setVariant(v)} style={{
-              padding: '12px 16px', borderRadius: 10, border: `1px solid ${variant === v ? 'rgba(124,115,255,0.5)' : C.border}`,
-              background: variant === v ? 'rgba(124,115,255,0.12)' : C.item,
-              color: variant === v ? C.purple : C.muted, fontWeight: 700, fontSize: 14,
-              cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s', textAlign: 'left',
-            }}>
-              <div style={{ fontSize: 15, marginBottom: 4 }}>Вариант {v}</div>
-              <div style={{ fontSize: 12, fontWeight: 400, color: variant === v ? 'rgba(139,132,255,0.7)' : C.dim }}>
-                {v === 'A' ? 'С ресвипом уровня' : 'Без ресвипа (OB + IFVG)'}
-              </div>
-            </button>
-          ))}
-        </div>
-
-        {variant && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {variantItems.map(item => (
-              <CheckRow key={item.id} item={item} checked={checked.has(item.id)} onToggle={() => toggle(item.id)} />
-            ))}
-          </div>
-        )}
-      </div>
-
       {/* Result banner */}
       <div style={{
         borderRadius: 14, padding: '20px 24px', marginTop: 8,
@@ -159,7 +119,7 @@ export default function Checklist() {
           </div>
           {!allDone && (
             <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>
-              {needVariant ? 'Выбери вариант входа и заполни все пункты' : `Осталось: ${totalCount - doneCount}`}
+              {`Осталось: ${totalCount - doneCount}`}
             </div>
           )}
         </div>
