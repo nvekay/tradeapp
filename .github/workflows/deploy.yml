@@ -18,8 +18,14 @@ jobs:
         script: |
           export PATH=$PATH:/usr/bin:/usr/local/bin
           cd /var/www/tradestat
+
+          # Force remove ALL containers with tradestat/backend/frontend in name
+          docker ps -aq --filter name=tradestat | xargs -r docker rm -f
+          docker ps -aq --filter name=backend   | xargs -r docker rm -f
+          docker ps -aq --filter name=frontend  | xargs -r docker rm -f
+
           git reset --hard
           git clean -fd
           git pull origin main
-          /usr/bin/docker compose down --remove-orphans
-          /usr/bin/docker compose up -d --build
+
+          COMPOSE_PROJECT_NAME=tradestat /usr/bin/docker compose up -d --build
