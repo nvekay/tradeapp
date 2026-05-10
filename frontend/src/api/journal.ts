@@ -25,7 +25,7 @@ export interface DailyJournalUpdate {
 }
 
 export const getJournalDates = () =>
-  client.get<string[]>('/journal/').then(r => r.data)
+  client.get<string[]>('/journal/dates').then(r => r.data)
 
 export const getJournal = (date: string) =>
   client.get<DailyJournal>(`/journal/${date}`).then(r => r.data)
