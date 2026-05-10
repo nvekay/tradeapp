@@ -1,5 +1,5 @@
-import { NavLink, Outlet } from 'react-router-dom'
-import { LayoutDashboard, List, PlusCircle, Brain, BarChart2, Settings, ClipboardList, BookOpen } from 'lucide-react'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { LayoutDashboard, List, PlusCircle, Brain, BarChart2, Settings, ClipboardList, BookOpen, LogOut } from 'lucide-react'
 
 const navItems = [
   { to: '/',          icon: LayoutDashboard, end: true },
@@ -10,6 +10,13 @@ const navItems = [
 ]
 
 export default function Layout() {
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    localStorage.removeItem('token')
+    navigate('/login')
+  }
+
   return (
     <div className="flex min-h-screen" style={{ background: '#f1f5f9', color: '#0f172a' }}>
       <nav
@@ -44,14 +51,28 @@ export default function Layout() {
           >
             {({ isActive }) => <Brain size={22} color={isActive ? '#6366f1' : '#64748b'} />}
           </NavLink>
-          {[BarChart2, Settings].map((Icon, i) => (
-            <div key={i} style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 11, cursor: 'pointer', color: '#64748b', transition: 'all 0.15s' }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#475569' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#64748b' }}
-            >
-              <Icon size={22} />
-            </div>
-          ))}
+          
+          <div style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 11, cursor: 'pointer', color: '#64748b', transition: 'all 0.15s' }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#475569' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#64748b' }}
+          >
+            <BarChart2 size={22} />
+          </div>
+
+          <div style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 11, cursor: 'pointer', color: '#64748b', transition: 'all 0.15s' }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#475569' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#64748b' }}
+          >
+            <Settings size={22} />
+          </div>
+
+          <div onClick={handleLogout} style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 11, cursor: 'pointer', color: '#64748b', transition: 'all 0.15s', marginTop: 10 }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(249,115,22,0.1)'; e.currentTarget.style.color = '#f97316' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#64748b' }}
+            title="Logout"
+          >
+            <LogOut size={22} />
+          </div>
         </div>
       </nav>
 

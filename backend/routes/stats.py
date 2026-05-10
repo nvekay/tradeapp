@@ -4,13 +4,14 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Optional
 from database import get_db
-from models import Trade, Factor, TradeFactors, DailyJournal
+from models import Trade, Factor, TradeFactors, DailyJournal, User
+from auth import get_current_user
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
 
-def _trades(db: Session, from_date: Optional[str], to_date: Optional[str]) -> list[Trade]:
-    q = db.query(Trade).order_by(Trade.date.asc())
+def _trades(db: Session, from_date: Optional[str], to_date: Optional[str], current_user: User) -> list[Trade]:
+    q = db.query(Trade).filter(Trade.user_id == current_user.id).order_by(Trade.date.asc())
     if from_date:
         q = q.filter(Trade.date >= datetime.fromisoformat(from_date.replace('Z', '')))
     if to_date:
@@ -20,11 +21,12 @@ def _trades(db: Session, from_date: Optional[str], to_date: Optional[str]) -> li
 
 @router.get("/summary")
 def summary(
+    current_user: User = Depends(get_current_user),
     from_date: Optional[str] = Query(None, alias="from"),
     to_date: Optional[str] = Query(None, alias="to"),
     db: Session = Depends(get_db),
 ):
-    trades = _trades(db, from_date, to_date)
+    trades = _trades(db, from_date, to_date, current_user)
     if not trades:
         return {
             "total_trades": 0, "winrate": 0.0, "total_pnl_pct": 0.0,
@@ -63,11 +65,12 @@ def summary(
 
 @router.get("/pnl-curve")
 def pnl_curve(
+    current_user: User = Depends(get_current_user),
     from_date: Optional[str] = Query(None, alias="from"),
     to_date: Optional[str] = Query(None, alias="to"),
     db: Session = Depends(get_db),
 ):
-    trades = _trades(db, from_date, to_date)
+    trades = _trades(db, from_date, to_date, current_user)
     cumulative = 0.0
     points = []
     for t in trades:
@@ -78,11 +81,12 @@ def pnl_curve(
 
 @router.get("/by-symbol")
 def by_symbol(
+    current_user: User = Depends(get_current_user),
     from_date: Optional[str] = Query(None, alias="from"),
     to_date: Optional[str] = Query(None, alias="to"),
     db: Session = Depends(get_db),
 ):
-    trades = _trades(db, from_date, to_date)
+    trades = _trades(db, from_date, to_date, current_user)
     buckets: dict[str, list[Trade]] = defaultdict(list)
     for t in trades:
         buckets[t.symbol].append(t)
@@ -101,11 +105,12 @@ def by_symbol(
 
 @router.get("/by-psychology")
 def by_psychology(
+    current_user: User = Depends(get_current_user),
     from_date: Optional[str] = Query(None, alias="from"),
     to_date: Optional[str] = Query(None, alias="to"),
     db: Session = Depends(get_db),
 ):
-    trades = _trades(db, from_date, to_date)
+    trades = _trades(db, from_date, to_date, current_user)
     buckets: dict[str, list[float]] = defaultdict(list)
     for t in trades:
         for tag in (t.psychology or []):
@@ -124,6 +129,7 @@ def by_psychology(
 
 @router.get("/by-factor")
 def by_factor(
+    current_user: User = Depends(get_current_user),
     from_date: Optional[str] = Query(None, alias="from"),
     to_date: Optional[str] = Query(None, alias="to"),
     db: Session = Depends(get_db),
@@ -135,6 +141,7 @@ def by_factor(
         db.query(Factor.name, Trade.pnl_pct)
         .join(TradeFactors, Factor.id == TradeFactors.factor_id)
         .join(Trade, Trade.id == TradeFactors.trade_id)
+        .filter(Trade.user_id == current_user.id)
     )
     if from_dt:
         q = q.filter(Trade.date >= from_dt)
@@ -158,12 +165,13 @@ def by_factor(
 
 @router.get("/journal-correlation")
 def journal_correlation(
+    current_user: User = Depends(get_current_user),
     from_date: Optional[str] = Query(None, alias="from"),
     to_date: Optional[str] = Query(None, alias="to"),
     db: Session = Depends(get_db),
 ):
-    trades = _trades(db, from_date, to_date)
-    journals = db.query(DailyJournal).all()
+    trades = _trades(db, from_date, to_date, current_user)
+    journals = db.query(DailyJournal).filter(DailyJournal.user_id == current_user.id).all()
     
     journal_map = {j.date: j for j in journals}
     

@@ -31,7 +31,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from routes import trades, factors, stats, journal
+from routes import trades, factors, stats, journal, auth
+app.include_router(auth.router)
 app.include_router(trades.router)
 app.include_router(factors.router)
 app.include_router(stats.router)

@@ -11,27 +11,30 @@ from bs4 import BeautifulSoup
 from database import get_db
 from models import Trade, Factor
 from schemas import TradeCreate, TradeUpdate, TradeOut, Result, Direction, Session as SessionSchema
+from auth import get_current_user
+from models import User
 
 router = APIRouter(prefix="/trades", tags=["trades"])
 
-def _get_or_404(db: Session, trade_id: int) -> Trade:
-    trade = db.get(Trade, trade_id)
+def _get_or_404(db: Session, trade_id: int, current_user: User) -> Trade:
+    trade = db.query(Trade).filter(Trade.id == trade_id, Trade.user_id == current_user.id).first()
     if not trade:
         raise HTTPException(status_code=404, detail="Trade not found")
     return trade
 
-def _resolve_factors(db: Session, factor_ids: list[int]) -> list[Factor]:
+def _resolve_factors(db: Session, factor_ids: list[int], current_user: User) -> list[Factor]:
     if not factor_ids:
         return []
-    factors = db.query(Factor).filter(Factor.id.in_(factor_ids)).all()
+    factors = db.query(Factor).filter(Factor.id.in_(factor_ids), Factor.user_id == current_user.id).all()
     if len(factors) != len(factor_ids):
-        raise HTTPException(status_code=400, detail="One or more factor IDs not found")
+        raise HTTPException(status_code=400, detail="One or more factor IDs not found or unauthorized")
     return factors
 
 @router.post("/", response_model=TradeOut, status_code=201)
-def create_trade(payload: TradeCreate, db: Session = Depends(get_db)):
-    factors = _resolve_factors(db, payload.factor_ids)
+def create_trade(payload: TradeCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    factors = _resolve_factors(db, payload.factor_ids, current_user)
     trade = Trade(
+        user_id=current_user.id,
         symbol=payload.symbol,
         direction=payload.direction,
         risk=payload.risk,
@@ -62,9 +65,10 @@ def list_trades(
     rating: Optional[int] = Query(None),
     from_date: Optional[datetime] = Query(None, alias="from"),
     to_date: Optional[datetime] = Query(None, alias="to"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    filters = []
+    filters = [Trade.user_id == current_user.id]
     if symbol:
         filters.append(Trade.symbol == symbol)
     if direction:
@@ -93,9 +97,10 @@ def export_csv(
     rating: Optional[int] = Query(None),
     from_date: Optional[datetime] = Query(None, alias="from"),
     to_date: Optional[datetime] = Query(None, alias="to"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    filters = []
+    filters = [Trade.user_id == current_user.id]
     if symbol:    filters.append(Trade.symbol == symbol)
     if direction: filters.append(Trade.direction == direction)
     if result:    filters.append(Trade.result == result)
@@ -127,25 +132,25 @@ def export_csv(
     )
 
 @router.get("/{trade_id}", response_model=TradeOut)
-def get_trade(trade_id: int, db: Session = Depends(get_db)):
-    return _get_or_404(db, trade_id)
+def get_trade(trade_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    return _get_or_404(db, trade_id, current_user)
 
 @router.put("/{trade_id}", response_model=TradeOut)
-def update_trade(trade_id: int, payload: TradeUpdate, db: Session = Depends(get_db)):
-    trade = _get_or_404(db, trade_id)
+def update_trade(trade_id: int, payload: TradeUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    trade = _get_or_404(db, trade_id, current_user)
     update_data = payload.model_dump(exclude_unset=True)
     factor_ids = update_data.pop("factor_ids", None)
     for field, value in update_data.items():
         setattr(trade, field, value)
     if factor_ids is not None:
-        trade.factors = _resolve_factors(db, factor_ids)
+        trade.factors = _resolve_factors(db, factor_ids, current_user)
     db.commit()
     db.refresh(trade)
     return trade
 
 @router.delete("/{trade_id}", status_code=204)
-def delete_trade(trade_id: int, db: Session = Depends(get_db)):
-    trade = _get_or_404(db, trade_id)
+def delete_trade(trade_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    trade = _get_or_404(db, trade_id, current_user)
     db.delete(trade)
     db.commit()
 
@@ -153,6 +158,7 @@ def delete_trade(trade_id: int, db: Session = Depends(get_db)):
 def import_html(
     file: UploadFile = File(...),
     balance: float = Form(100000.0),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     content = file.file.read().decode("utf-8", errors="ignore")
@@ -220,6 +226,7 @@ def import_html(
             session = SessionSchema.asian
             
         trade = Trade(
+            user_id=current_user.id,
             symbol=symbol,
             direction=direction,
             risk=round(risk, 2),
