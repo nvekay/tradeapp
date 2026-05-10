@@ -21,4 +21,5 @@ jobs:
           git reset --hard
           git clean -fd
           git pull origin main
+          /usr/bin/docker compose down --remove-orphans
           /usr/bin/docker compose up -d --build
