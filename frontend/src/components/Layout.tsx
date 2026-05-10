@@ -23,8 +23,14 @@ export default function Layout() {
         className="fixed left-0 top-0 bottom-0 flex flex-col items-center py-5 gap-1 z-10"
         style={{ width: 62, background: '#ffffff', borderRight: '1px solid rgba(0,0,0,0.08)' }}
       >
-        <div className="text-slate-900 mb-5" style={{ fontFamily: "'Space Mono',monospace", fontSize: 13, fontWeight: 700 }}>
-          TJ
+        <div className="mb-5" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="30" height="30">
+            <rect width="32" height="32" rx="8" fill="#4f46e5"/>
+            <rect x="5" y="18" width="5" height="9" rx="1.5" fill="rgba(255,255,255,0.5)"/>
+            <rect x="13.5" y="12" width="5" height="15" rx="1.5" fill="rgba(255,255,255,0.75)"/>
+            <rect x="22" y="6" width="5" height="21" rx="1.5" fill="#ffffff"/>
+            <polyline points="7.5,20 16,13.5 24.5,8" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </div>
 
         {navItems.map(({ to, icon: Icon, end }) => (
