@@ -16,8 +16,9 @@ jobs:
         username: ${{ secrets.VPS_USER }}
         key: ${{ secrets.VPS_SSH_KEY }}
         script: |
+          export PATH=$PATH:/usr/bin:/usr/local/bin
           cd /var/www/tradestat
           git reset --hard
           git clean -fd
           git pull origin main
-          docker compose up -d --build
+          /usr/bin/docker compose up -d --build
