@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, Text, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import JSON
 from datetime import datetime, timezone
@@ -53,6 +53,7 @@ class Trade(Base):
     screenshot_1h = Column(String, nullable=True)
     screenshot_4h = Column(String, nullable=True)
     psychology = Column(JSON, nullable=False, default=list)
+    screenshots = Column(JSON, nullable=False, default=list)  # [{label, url}, ...]
     rating = Column(Integer, nullable=False, default=0)
     trade_type = Column(String, nullable=True)  # "trend" | "countertrend"
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
@@ -96,6 +97,7 @@ class Strategy(Base):
     setup_checklist = Column(JSON, nullable=False, default=list)
     sl_logic = Column(Text, nullable=True)
     tp_logic = Column(Text, nullable=True)
+    is_default = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -104,6 +106,14 @@ class Strategy(Base):
 
 class PsychologyTag(Base):
     __tablename__ = "psychology_tags"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    name = Column(String, nullable=False)
+
+
+class UserSymbol(Base):
+    __tablename__ = "user_symbols"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)

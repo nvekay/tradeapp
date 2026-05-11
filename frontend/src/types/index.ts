@@ -8,6 +8,8 @@ export interface Factor {
   name: string
 }
 
+export interface Screenshot { label: string; url: string }
+
 export interface Trade {
   id: number
   symbol: string
@@ -19,9 +21,10 @@ export interface Trade {
   date: string
   session: Session
   notes: string | null
-  screenshot_5m: string | null
-  screenshot_1h: string | null
-  screenshot_4h: string | null
+  screenshot_5m?: string | null
+  screenshot_1h?: string | null
+  screenshot_4h?: string | null
+  screenshots: Screenshot[]
   psychology: string[]
   rating: number
   trade_type: TradeType | null
@@ -41,6 +44,7 @@ export interface TradeCreate {
   screenshot_5m?: string
   screenshot_1h?: string
   screenshot_4h?: string
+  screenshots?: Screenshot[]
   psychology?: string[]
   rating?: number
   trade_type?: TradeType | null
@@ -118,6 +122,7 @@ export interface Strategy {
   max_risk_pct: number
   min_rr: number
   setup_checklist: string[]
+  is_default: boolean
   sl_logic?: string | null
   tp_logic?: string | null
   created_at: string
@@ -141,6 +146,7 @@ export interface StrategyCreate {
   max_risk_pct?: number
   min_rr?: number
   setup_checklist?: string[]
+  is_default?: boolean
   sl_logic?: string
   tp_logic?: string
 }

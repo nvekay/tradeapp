@@ -58,6 +58,13 @@ class FactorOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# --- Screenshot ---
+
+class Screenshot(BaseModel):
+    label: str
+    url: str
+
+
 # --- Trade ---
 
 class TradeBase(BaseModel):
@@ -73,6 +80,7 @@ class TradeBase(BaseModel):
     screenshot_1h: Optional[str] = None
     screenshot_4h: Optional[str] = None
     psychology: list[str] = []
+    screenshots: list[Screenshot] = []
     rating: int = 0
     trade_type: Optional[Literal["trend", "countertrend"]] = None
     strategy_id: Optional[int] = None
@@ -127,6 +135,7 @@ class TradeUpdate(BaseModel):
     screenshot_1h: Optional[str] = None
     screenshot_4h: Optional[str] = None
     psychology: Optional[list[str]] = None
+    screenshots: Optional[list[Screenshot]] = None
     rating: Optional[int] = None
     trade_type: Optional[Literal["trend", "countertrend"]] = None
     strategy_id: Optional[int] = None
@@ -198,6 +207,7 @@ class StrategyBase(BaseModel):
     max_risk_pct: float = 1.0
     min_rr: float = 1.5
     setup_checklist: list[str] = []
+    is_default: bool = False
     sl_logic: Optional[str] = None
     tp_logic: Optional[str] = None
 
@@ -219,6 +229,7 @@ class StrategyUpdate(BaseModel):
     max_risk_pct: Optional[float] = None
     min_rr: Optional[float] = None
     setup_checklist: Optional[list[str]] = None
+    is_default: Optional[bool] = None
     sl_logic: Optional[str] = None
     tp_logic: Optional[str] = None
 
@@ -243,6 +254,18 @@ class PsychologyTagCreate(BaseModel):
 
 
 class PsychologyTagOut(BaseModel):
+    id: int
+    name: str
+    model_config = {"from_attributes": True}
+
+
+# --- User Symbols ---
+
+class UserSymbolCreate(BaseModel):
+    name: str
+
+
+class UserSymbolOut(BaseModel):
     id: int
     name: str
     model_config = {"from_attributes": True}

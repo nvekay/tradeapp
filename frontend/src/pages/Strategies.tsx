@@ -76,9 +76,14 @@ export default function Strategies() {
                       {s.description && <p className="text-xs text-[#64748B] mt-1 line-clamp-2">{s.description}</p>}
                     </div>
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded" style={{ color: statusDot(s.status), background: statusDot(s.status) + '15' }}>
-                    {statusLabel(s.status)}
-                  </span>
+                  <div className="flex flex-col items-end gap-1">
+                    {s.is_default && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]">★ Default</span>
+                    )}
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded" style={{ color: statusDot(s.status), background: statusDot(s.status) + '15' }}>
+                      {statusLabel(s.status)}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 mt-4 ml-2">

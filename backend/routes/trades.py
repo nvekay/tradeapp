@@ -9,7 +9,7 @@ from fastapi.responses import StreamingResponse
 from bs4 import BeautifulSoup
 
 from database import get_db
-from models import Trade, Factor
+from models import Trade, Factor, UserSymbol
 from schemas import TradeCreate, TradeUpdate, TradeOut, Result, Direction, Session as SessionSchema
 from auth import get_current_user
 from models import User
@@ -52,8 +52,15 @@ def create_trade(payload: TradeCreate, current_user: User = Depends(get_current_
         trade_type=payload.trade_type,
         factors=factors,
         strategy_id=payload.strategy_id,
+        screenshots=[s.model_dump() for s in (payload.screenshots or [])],
     )
     db.add(trade)
+    # Auto-track symbol for user
+    sym_name = (payload.symbol or "").strip().upper()
+    if sym_name:
+        exists = db.query(UserSymbol).filter(UserSymbol.user_id == current_user.id, UserSymbol.name == sym_name).first()
+        if not exists:
+            db.add(UserSymbol(user_id=current_user.id, name=sym_name))
     db.commit()
     db.refresh(trade)
     return trade

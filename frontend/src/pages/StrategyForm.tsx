@@ -31,6 +31,7 @@ export default function StrategyForm() {
   const [checklist, setChecklist] = useState<string[]>([])
   const [slLogic, setSlLogic] = useState('')
   const [tpLogic, setTpLogic] = useState('')
+  const [isDefault, setIsDefault] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -42,6 +43,7 @@ export default function StrategyForm() {
       setAllowedDirections(s.allowed_directions); setAllowedSessions(s.allowed_sessions); setAllowedSymbols(s.allowed_symbols)
       setTradeType(s.trade_type ?? null); setMaxRiskPct(s.max_risk_pct); setMinRr(s.min_rr)
       setChecklist(s.setup_checklist); setSlLogic(s.sl_logic || ''); setTpLogic(s.tp_logic || '')
+      setIsDefault(s.is_default)
     })
   }, [id])
 
@@ -56,6 +58,7 @@ export default function StrategyForm() {
         trade_type: tradeType, max_risk_pct: maxRiskPct, min_rr: minRr,
         setup_checklist: checklist.filter(c => c.trim()),
         sl_logic: slLogic || undefined, tp_logic: tpLogic || undefined,
+        is_default: isDefault,
       }
       if (isEdit) await updateStrategy(Number(id), payload)
       else await createStrategy(payload)
@@ -99,6 +102,15 @@ export default function StrategyForm() {
             <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Trend continuation on 5m after FVG mitigation..."
               className="w-full p-3 bg-white border border-[#E2E8F0] rounded-lg text-sm text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] resize-none" />
           </div>
+          <div className="mt-4">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" checked={isDefault} onChange={e => setIsDefault(e.target.checked)}
+                className="w-4 h-4 accent-[#2563EB]" />
+              <span className="text-sm font-medium text-[#0F172A]">Set as default strategy</span>
+              <span className="text-xs text-[#94A3B8]">— will be preselected when adding a new trade</span>
+            </label>
+          </div>
+
           <div className="mt-4">
             <Label>Status</Label>
             <div className="flex rounded-lg border border-[#E2E8F0] overflow-hidden bg-white h-10 max-w-md">

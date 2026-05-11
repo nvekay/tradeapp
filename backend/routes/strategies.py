@@ -42,6 +42,7 @@ def _to_out(strategy: Strategy, db: Session) -> dict:
         "setup_checklist": strategy.setup_checklist or [],
         "sl_logic": strategy.sl_logic,
         "tp_logic": strategy.tp_logic,
+        "is_default": getattr(strategy, "is_default", False),
         "created_at": strategy.created_at,
         "updated_at": strategy.updated_at,
         **stats,
@@ -80,7 +81,10 @@ def create_strategy(payload: StrategyCreate, current_user: User = Depends(get_cu
         setup_checklist=payload.setup_checklist,
         sl_logic=payload.sl_logic,
         tp_logic=payload.tp_logic,
+        is_default=payload.is_default,
     )
+    if payload.is_default:
+        db.query(Strategy).filter(Strategy.user_id == current_user.id, Strategy.is_default == True).update({"is_default": False})
     db.add(s); db.commit(); db.refresh(s)
     return _to_out(s, db)
 
@@ -95,6 +99,8 @@ def update_strategy(strategy_id: int, payload: StrategyUpdate, current_user: Use
         data["allowed_directions"] = [d.value if hasattr(d, "value") else d for d in data["allowed_directions"]]
     if "allowed_sessions" in data and data["allowed_sessions"] is not None:
         data["allowed_sessions"] = [x.value if hasattr(x, "value") else x for x in data["allowed_sessions"]]
+    if data.get("is_default"):
+        db.query(Strategy).filter(Strategy.user_id == current_user.id, Strategy.id != s.id, Strategy.is_default == True).update({"is_default": False})
     for k, v in data.items():
         setattr(s, k, v)
     db.commit(); db.refresh(s)

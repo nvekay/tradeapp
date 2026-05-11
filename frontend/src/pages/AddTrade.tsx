@@ -4,13 +4,16 @@ import { createTrade, getTrade, updateTrade } from '../api/trades'
 import { listStrategies } from '../api/strategies'
 import type { Strategy } from '../types'
 import type { Direction, TradeResult, Session, TradeType } from '../types'
-import { SYMBOLS, SESSION_LABELS } from '../constants'
+import { SESSION_LABELS } from '../constants'
 import HeartPicker from '../components/HeartPicker'
 import TagSearchSelect from '../components/TagSearchSelect'
-import ScreenshotInput from '../components/ScreenshotInput'
+import SymbolSelect from '../components/SymbolSelect'
+import ScreenshotsField from '../components/ScreenshotsField'
 import { getFactors, createFactor } from '../api/factors'
 import { getPsychologyTags, createPsychologyTag } from '../api/psychology'
-import type { Factor } from '../types'
+import { getSymbols, createSymbol } from '../api/symbols'
+import type { UserSymbol } from '../api/symbols'
+import type { Factor, Screenshot } from '../types'
 
 function toLocalInput(d: Date): string {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
@@ -35,9 +38,7 @@ export default function AddTrade() {
   const [date, setDate] = useState(() => toLocalInput(new Date()))
   const [session, setSession] = useState<Session>('london')
   const [notes, setNotes] = useState('')
-  const [ss5m, setSs5m] = useState('')
-  const [ss1h, setSs1h] = useState('')
-  const [ss4h, setSs4h] = useState('')
+  const [screenshots, setScreenshots] = useState<Screenshot[]>([])
   const [tradeType, setTradeType] = useState<TradeType | null>(null)
   const [psychology, setPsych] = useState<string[]>([])
   const [factorIds, setFids] = useState<number[]>([])
@@ -45,16 +46,26 @@ export default function AddTrade() {
   const [strategyId, setStrategyId] = useState<number | null>(null)
   const [strategies, setStrategies] = useState<Strategy[]>([])
   const [factorList, setFactorList] = useState<Factor[]>([])
+  const [symbolList, setSymbolList] = useState<UserSymbol[]>([])
   const [psyList, setPsyList] = useState<{ id: number; name: string }[]>([])
   const [psyIds, setPsyIds] = useState<number[]>([])
   const [submitting, setSub] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    listStrategies().then(s => setStrategies(s.filter(x => x.status === 'active'))).catch(() => {})
+    listStrategies().then(s => {
+      const active = s.filter(x => x.status === 'active')
+      setStrategies(active)
+      // Preselect default strategy only for new trades
+      if (!id) {
+        const def = active.find(x => x.is_default)
+        if (def) setStrategyId(def.id)
+      }
+    }).catch(() => {})
     getFactors().then(setFactorList).catch(() => {})
     getPsychologyTags().then(setPsyList).catch(() => {})
-  }, [])
+    getSymbols().then(setSymbolList).catch(() => {})
+  }, [id])
 
   useEffect(() => {
     if (!id) return
@@ -88,7 +99,7 @@ export default function AddTrade() {
       const payload = {
         symbol, direction, risk, rr, result, date: new Date(date).toISOString(),
         session, notes: notes || undefined,
-        screenshot_5m: ss5m || undefined, screenshot_1h: ss1h || undefined, screenshot_4h: ss4h || undefined,
+        screenshots,
         psychology, factor_ids: factorIds, rating, trade_type: tradeType || undefined,
         strategy_id: strategyId,
       }
@@ -138,8 +149,17 @@ export default function AddTrade() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <Label>Symbol</Label>
-              <input list="symbols" value={symbol} onChange={e => setSymbol(e.target.value.toUpperCase())} required className={`${inputClass} font-bold`} />
-              <datalist id="symbols">{SYMBOLS.map(s => <option key={s} value={s} />)}</datalist>
+              <SymbolSelect
+                value={symbol}
+                onChange={setSymbol}
+                options={symbolList}
+                preferred={strategies.find(s => s.id === strategyId)?.allowed_symbols ?? []}
+                onCreate={async (name) => {
+                  const s = await createSymbol(name)
+                  setSymbolList(prev => [...prev, s])
+                  return s
+                }}
+              />
             </div>
             <div>
               <Label>Direction</Label>
@@ -204,11 +224,7 @@ export default function AddTrade() {
           {/* Screenshots */}
           <div>
             <Label>Screenshots (TradingView URLs)</Label>
-            <div className="flex flex-col gap-3">
-              <ScreenshotInput label="5m" value={ss5m} onChange={setSs5m} />
-              <ScreenshotInput label="1h" value={ss1h} onChange={setSs1h} />
-              <ScreenshotInput label="4h" value={ss4h} onChange={setSs4h} />
-            </div>
+            <ScreenshotsField value={screenshots} onChange={setScreenshots} />
           </div>
 
           {/* Psychology / Factors */}
