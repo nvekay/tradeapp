@@ -311,10 +311,8 @@ export default function Trades() {
                       <td className="px-5 py-3.5">
                         <div className="flex flex-wrap gap-1.5 max-w-[280px]">
                           {t.psychology.slice(0, 2).map(p => {
-                            const isBad = ['FOMO', 'Мстительная торговля', 'Эмоциональный вход', 'Жадность'].some(x => p.includes(x))
-                            const cls = isBad ? 'bg-red-50 text-red-700 border-red-200'
-                              : p.toLowerCase().includes('систем') ? 'bg-green-50 text-green-700 border-green-200'
-                              : 'bg-gray-100 text-gray-700 border-gray-200'
+                            const isGood = p.toLowerCase().includes('систем')
+                            const cls = isGood ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'
                             return <span key={p} className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${cls}`}>{p.split('/')[0].trim()}</span>
                           })}
                           {t.factors.slice(0, 2).map(f => (
