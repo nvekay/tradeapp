@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, List, PlusCircle, Brain, Settings, ClipboardList, BookOpen, LogOut, Target, Menu, X } from 'lucide-react'
 
 const navItems = [
-  { to: '/',          icon: LayoutDashboard, end: true },
+  { to: '/app',       icon: LayoutDashboard, end: true },
   { to: '/trades',    icon: List,            end: false },
   { to: '/add',       icon: PlusCircle,      end: false },
   { to: '/checklist', icon: ClipboardList,   end: false },

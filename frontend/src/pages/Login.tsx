@@ -27,7 +27,7 @@ export default function Login() {
         ? await login({ email, password })
         : await register({ email, password })
       localStorage.setItem('token', data.access_token)
-      navigate('/')
+      navigate('/app')
     } catch (err: unknown) {
       setError((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 'Authentication failed')
     } finally {
@@ -40,7 +40,7 @@ export default function Login() {
       setLoading(true)
       const data = await googleLogin({ credential: credentialResponse.credential })
       localStorage.setItem('token', data.access_token)
-      navigate('/')
+      navigate('/app')
     } catch (err: unknown) {
       setError((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 'Google Login failed')
       setLoading(false)

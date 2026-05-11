@@ -13,6 +13,7 @@ import StrategyDetail from './pages/StrategyDetail'
 import Settings from './pages/Settings'
 import Onboarding from './pages/Onboarding'
 import TradeDetail from './pages/TradeDetail'
+import Landing from './pages/Landing'
 import Login from './pages/Login'
 import AuthGuard from './components/AuthGuard'
 import OnboardingGuard from './components/OnboardingGuard'
@@ -25,10 +26,11 @@ export default function App() {
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <BrowserRouter>
         <Routes>
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/onboarding" element={<AuthGuard><SettingsProvider><Onboarding /></SettingsProvider></AuthGuard>} />
           <Route element={<AuthGuard><SettingsProvider><OnboardingGuard><Layout /></OnboardingGuard></SettingsProvider></AuthGuard>}>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/app" element={<Dashboard />} />
             <Route path="/trades" element={<Trades />} />
             <Route path="/trade/:id" element={<TradeDetail />} />
             <Route path="/trades/:id" element={<TradeDetail />} />
@@ -42,7 +44,7 @@ export default function App() {
             <Route path="/strategies/:id" element={<StrategyDetail />} />
             <Route path="/strategies/:id/edit" element={<StrategyForm />} />
             <Route path="/settings" element={<Settings />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/app" replace />} />
           </Route>
         </Routes>
       </BrowserRouter>

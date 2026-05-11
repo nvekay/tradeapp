@@ -42,7 +42,7 @@ export default function Onboarding() {
           min_rr: 1.5,
         }).catch(() => null)
       }
-      navigate('/', { replace: true })
+      navigate('/app', { replace: true })
     } finally {
       setSaving(false)
     }
