@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Sun, Moon } from 'lucide-react'
 import { getJournal, createJournal, updateJournal, getJournalDates } from '../api/journal'
 import type { DailyJournal } from '../api/journal'
@@ -89,6 +89,7 @@ function MiniCalendar({ tradesByDate, journalDates, selected, onSelect }: {
 }
 
 export default function Journal() {
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [date, setDate] = useState(() => searchParams.get('date') || new Date().toISOString().split('T')[0])
   const [, setJournal] = useState<DailyJournal | null>(null)
@@ -297,7 +298,7 @@ export default function Journal() {
             {dayTrades.map(t => {
               const c = t.pnl_pct > 0 ? '#059669' : t.pnl_pct < 0 ? '#DC2626' : '#64748B'
               return (
-                <div key={t.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-[#F1F5F9]">
+                <div key={t.id} onClick={() => navigate(`/edit/${t.id}`)} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-[#F1F5F9] cursor-pointer hover:bg-white hover:border-[#E2E8F0] hover:shadow-sm transition-all">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-white border border-[#E2E8F0] flex items-center justify-center font-bold text-xs text-[#0F172A]">{t.symbol.slice(0,2)}</div>
                     <div>
