@@ -4,11 +4,13 @@ import { createTrade, getTrade, updateTrade } from '../api/trades'
 import { listStrategies } from '../api/strategies'
 import type { Strategy } from '../types'
 import type { Direction, TradeResult, Session, TradeType } from '../types'
-import { PSYCHOLOGY_OPTIONS, SYMBOLS, SESSION_LABELS } from '../constants'
+import { SYMBOLS, SESSION_LABELS } from '../constants'
 import HeartPicker from '../components/HeartPicker'
-import MultiSelect from '../components/MultiSelect'
-import FactorSelect from '../components/FactorSelect'
+import TagSearchSelect from '../components/TagSearchSelect'
 import ScreenshotInput from '../components/ScreenshotInput'
+import { getFactors, createFactor } from '../api/factors'
+import { getPsychologyTags, createPsychologyTag } from '../api/psychology'
+import type { Factor } from '../types'
 
 function toLocalInput(d: Date): string {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
@@ -42,10 +44,17 @@ export default function AddTrade() {
   const [rating, setRating] = useState(0)
   const [strategyId, setStrategyId] = useState<number | null>(null)
   const [strategies, setStrategies] = useState<Strategy[]>([])
+  const [factorList, setFactorList] = useState<Factor[]>([])
+  const [psyList, setPsyList] = useState<{ id: number; name: string }[]>([])
+  const [psyIds, setPsyIds] = useState<number[]>([])
   const [submitting, setSub] = useState(false)
   const [error, setError] = useState('')
 
-  useEffect(() => { listStrategies().then(s => setStrategies(s.filter(x => x.status === 'active'))).catch(() => {}) }, [])
+  useEffect(() => {
+    listStrategies().then(s => setStrategies(s.filter(x => x.status === 'active'))).catch(() => {})
+    getFactors().then(setFactorList).catch(() => {})
+    getPsychologyTags().then(setPsyList).catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!id) return
@@ -54,10 +63,18 @@ export default function AddTrade() {
       setResult(t.result); setDate(toLocalInput(new Date(t.date + 'Z'))); setSession(t.session)
       setNotes(t.notes ?? ''); setSs5m(t.screenshot_5m ?? ''); setSs1h(t.screenshot_1h ?? ''); setSs4h(t.screenshot_4h ?? '')
       setPsych(t.psychology); setFids(t.factors.map(f => f.id)); setRating(t.rating)
+      // psyIds will be hydrated by effect below once psyList is loaded
       setTradeType(t.trade_type)
       setStrategyId(t.strategy_id ?? null)
     })
   }, [id])
+
+  // Sync psyIds from psychology strings + psyList; create missing tags lazily on save
+  useEffect(() => {
+    if (!psyList.length || !psychology.length) { setPsyIds([]); return }
+    const ids = psychology.map(name => psyList.find(t => t.name === name)?.id).filter((x): x is number => x !== undefined)
+    setPsyIds(ids)
+  }, [psyList, psychology])
 
   const pnlPreview = useMemo(() => {
     if (result === 'take') return +(risk * rr).toFixed(4)
@@ -198,11 +215,36 @@ export default function AddTrade() {
           <div className="space-y-4">
             <div>
               <Label>Psychology</Label>
-              <MultiSelect options={PSYCHOLOGY_OPTIONS} value={psychology} onChange={setPsych} placeholder="Select psychology tags..." />
+              <TagSearchSelect
+                options={psyList}
+                value={psyIds}
+                onChange={ids => {
+                  setPsyIds(ids)
+                  setPsych(ids.map(id => psyList.find(t => t.id === id)?.name).filter((x): x is string => !!x))
+                }}
+                onCreate={async (name) => {
+                  const t = await createPsychologyTag(name)
+                  setPsyList(prev => [...prev, t])
+                  return t
+                }}
+                placeholder="Select psychology tags..."
+                emptyText="No psychology tags yet — type to create your first one"
+              />
             </div>
             <div>
               <Label>Factors</Label>
-              <FactorSelect value={factorIds} onChange={setFids} />
+              <TagSearchSelect
+                options={factorList}
+                value={factorIds}
+                onChange={setFids}
+                onCreate={async (name) => {
+                  const f = await createFactor(name)
+                  setFactorList(prev => [...prev, f])
+                  return f
+                }}
+                placeholder="Select factors..."
+                emptyText="No factors yet — type to create your first one"
+              />
             </div>
           </div>
 

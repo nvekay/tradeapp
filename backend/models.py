@@ -100,3 +100,11 @@ class Strategy(Base):
     updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     trades = relationship("Trade", back_populates="strategy")
+
+
+class PsychologyTag(Base):
+    __tablename__ = "psychology_tags"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    name = Column(String, nullable=False)

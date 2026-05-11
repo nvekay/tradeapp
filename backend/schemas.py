@@ -234,3 +234,15 @@ class StrategyOut(StrategyBase):
     avg_rr: float = 0.0
 
     model_config = {"from_attributes": True}
+
+
+# --- Psychology Tags ---
+
+class PsychologyTagCreate(BaseModel):
+    name: str
+
+
+class PsychologyTagOut(BaseModel):
+    id: int
+    name: str
+    model_config = {"from_attributes": True}
