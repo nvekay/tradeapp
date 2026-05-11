@@ -1,13 +1,32 @@
 import client from './client'
 
-export const login = (data: any) =>
-  client.post('/auth/login', data).then(r => r.data)
+export interface AuthPayload {
+  email: string
+  password: string
+}
 
-export const register = (data: any) =>
-  client.post('/auth/register', data).then(r => r.data)
+export interface GoogleAuthPayload {
+  credential?: string
+}
 
-export const googleLogin = (data: any) =>
-  client.post('/auth/google', data).then(r => r.data)
+export interface TokenResponse {
+  access_token: string
+  token_type: string
+}
+
+export interface UserResponse {
+  id: number
+  email: string
+}
+
+export const login = (data: AuthPayload) =>
+  client.post<TokenResponse>('/auth/login', data).then(r => r.data)
+
+export const register = (data: AuthPayload) =>
+  client.post<TokenResponse>('/auth/register', data).then(r => r.data)
+
+export const googleLogin = (data: GoogleAuthPayload) =>
+  client.post<TokenResponse>('/auth/google', data).then(r => r.data)
 
 export const getMe = () =>
-  client.get('/auth/me').then(r => r.data)
+  client.get<UserResponse>('/auth/me').then(r => r.data)

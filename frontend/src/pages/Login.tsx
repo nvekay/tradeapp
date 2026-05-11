@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { GoogleLogin } from '@react-oauth/google'
 import { login, register, googleLogin } from '../api/auth'
+import type { CredentialResponse } from '@react-oauth/google'
 
 const C = {
   card: '#ffffff', item: '#F8FAFC', border: '#E2E8F0',
@@ -27,21 +28,21 @@ export default function Login() {
         : await register({ email, password })
       localStorage.setItem('token', data.access_token)
       navigate('/')
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Authentication failed')
+    } catch (err: unknown) {
+      setError((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 'Authentication failed')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleGoogleSuccess = async (credentialResponse: any) => {
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
     try {
       setLoading(true)
       const data = await googleLogin({ credential: credentialResponse.credential })
       localStorage.setItem('token', data.access_token)
       navigate('/')
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Google Login failed')
+    } catch (err: unknown) {
+      setError((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 'Google Login failed')
       setLoading(false)
     }
   }

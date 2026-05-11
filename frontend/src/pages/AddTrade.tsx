@@ -137,7 +137,8 @@ export default function AddTrade() {
         psychology, factor_ids: factorIds, rating, trade_type: tradeType || undefined,
         strategy_id: strategyId,
       }
-      isEdit ? await updateTrade(Number(id), payload) : await createTrade(payload)
+      if (isEdit) await updateTrade(Number(id), payload)
+      else await createTrade(payload)
       navigate('/trades')
     } catch (e: unknown) {
       const detail = (e as { response?: { data?: { detail?: string | { msg?: string }[] } } })?.response?.data?.detail

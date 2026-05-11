@@ -52,7 +52,7 @@ export interface TradeCreate {
   strategy_id?: number | null
 }
 
-export interface TradeUpdate extends Partial<TradeCreate> {}
+export type TradeUpdate = Partial<TradeCreate>
 
 // --- Stats ---
 

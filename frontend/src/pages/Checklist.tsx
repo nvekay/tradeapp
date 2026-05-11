@@ -60,7 +60,12 @@ export default function Checklist() {
   const [checked, setChecked] = useState<Set<string>>(new Set())
 
   const toggle = (id: string) =>
-    setChecked(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s })
+    setChecked(prev => {
+      const s = new Set(prev)
+      if (s.has(id)) s.delete(id)
+      else s.add(id)
+      return s
+    })
 
   const allRequired = SECTIONS.flatMap(s => s.items)
   const totalCount = allRequired.length
