@@ -142,14 +142,25 @@ export default function Trades() {
     setTrades(t => t.filter(x => x.id !== id))
   }
 
-  const setQuickRange = (range: 'today' | 'week' | 'month' | 'all') => {
+  const setQuickRange = (range: 'today' | 'thisWeek' | 'week' | 'thisMonth' | 'month' | 'all') => {
     const now = new Date()
     const fmt = (d: Date) => d.toISOString().split('T')[0]
     if (range === 'all') { setFilters(f => ({ ...f, from: '', to: '' })); return }
     if (range === 'today') { setFilters(f => ({ ...f, from: fmt(now), to: fmt(now) })); return }
+    if (range === 'thisWeek') {
+      const mon = new Date(now)
+      mon.setDate(now.getDate() - ((now.getDay() + 6) % 7))
+      const sun = new Date(mon); sun.setDate(mon.getDate() + 6)
+      setFilters(f => ({ ...f, from: fmt(mon), to: fmt(sun) })); return
+    }
     if (range === 'week') {
       const start = new Date(now); start.setDate(now.getDate() - 7)
       setFilters(f => ({ ...f, from: fmt(start), to: fmt(now) })); return
+    }
+    if (range === 'thisMonth') {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1)
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      setFilters(f => ({ ...f, from: fmt(start), to: fmt(end) })); return
     }
     if (range === 'month') {
       const start = new Date(now); start.setMonth(now.getMonth() - 1)
@@ -240,9 +251,16 @@ export default function Trades() {
           </div>
 
           <div className="flex gap-1 ml-2">
-            {(['today', 'week', 'month', 'all'] as const).map(r => (
-              <button key={r} onClick={() => setQuickRange(r)} className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider bg-white border border-[#E2E8F0] rounded-md hover:bg-gray-50 text-[#64748B] hover:text-[#0F172A] transition-colors">
-                {r === 'all' ? 'All' : r === 'today' ? 'Today' : r === 'week' ? 'Week' : 'Month'}
+            {([
+              { v: 'today',     l: 'Today' },
+              { v: 'thisWeek',  l: 'This Week' },
+              { v: 'week',      l: '7d' },
+              { v: 'thisMonth', l: 'This Month' },
+              { v: 'month',     l: '30d' },
+              { v: 'all',       l: 'All' },
+            ] as const).map(b => (
+              <button key={b.v} onClick={() => setQuickRange(b.v)} className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider bg-white border border-[#E2E8F0] rounded-md hover:bg-gray-50 text-[#64748B] hover:text-[#0F172A] transition-colors">
+                {b.l}
               </button>
             ))}
           </div>
