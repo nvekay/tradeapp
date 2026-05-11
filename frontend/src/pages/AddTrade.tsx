@@ -13,12 +13,12 @@ function toLocalInput(d: Date): string {
 }
 
 const C = {
-  card: '#ffffff', item: '#f8fafc', border: 'rgba(0,0,0,0.08)',
-  text: '#0f172a', muted: '#64748b', dim: '#94a3b8',
-  green: '#10b981', red: '#f97316', yellow: '#f59e0b', purple: '#6366f1', blue: '#3b82f6',
-  purpleBtn: '#4f46e5', orange: '#f97316'
+  card: '#ffffff', item: '#F8FAFC', border: '#E2E8F0',
+  text: '#0F172A', muted: '#64748B', dim: '#94A3B8',
+  green: '#059669', red: '#DC2626', yellow: '#D97706', purple: '#2563EB', blue: '#2563EB',
+  purpleBtn: '#2563EB', orange: '#DC2626'
 }
-const mono: React.CSSProperties = { fontFamily: "'Space Mono', monospace" }
+const mono: React.CSSProperties = { fontFamily: "'JetBrains Mono', monospace" }
 
 const field: React.CSSProperties = {
   background: C.item, border: `1px solid ${C.border}`, borderRadius: 8,
@@ -27,7 +27,7 @@ const field: React.CSSProperties = {
 }
 
 function Label({ children }: { children: React.ReactNode }) {
-  return <div style={{ fontSize: 12, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 8 }}>{children}</div>
+  return <div style={{ fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, marginBottom: 8 }}>{children}</div>
 }
 
 export default function AddTrade() {
@@ -123,16 +123,16 @@ export default function AddTrade() {
           <div>
             <Label>Direction</Label>
             <Toggle value={direction} onChange={setDir} opts={[
-              { v: 'long'  as Direction, label: '▲ Long',  color: C.green,  bg: 'rgba(61,255,160,0.15)' },
-              { v: 'short' as Direction, label: '▼ Short', color: C.red,    bg: 'rgba(249,115,22,0.15)' },
+              { v: 'long'  as Direction, label: '▲ Long',  color: C.green, bg: '#F0FDF4' },
+              { v: 'short' as Direction, label: '▼ Short', color: C.red,   bg: '#FEF2F2' },
             ]} />
           </div>
           <div>
             <Label>Result</Label>
             <Toggle value={result} onChange={setResult} opts={[
-              { v: 'take' as TradeResult, label: 'Take', color: C.green,  bg: 'rgba(61,255,160,0.15)' },
-              { v: 'stop' as TradeResult, label: 'Stop', color: C.red,    bg: 'rgba(249,115,22,0.15)' },
-              { v: 'b/e'  as TradeResult, label: 'B/E',  color: C.yellow, bg: 'rgba(255,209,102,0.15)' },
+              { v: 'take' as TradeResult, label: 'Take', color: C.green,  bg: '#F0FDF4' },
+              { v: 'stop' as TradeResult, label: 'Stop', color: C.red,    bg: '#FEF2F2' },
+              { v: 'b/e'  as TradeResult, label: 'B/E',  color: C.yellow, bg: '#FFFBEB' },
             ]} />
           </div>
         </div>
@@ -141,9 +141,9 @@ export default function AddTrade() {
           <Label>Direction type</Label>
           <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: `1px solid ${C.border}` }}>
             {([
-              { v: null,            label: '—',            color: C.muted,   bg: C.item },
-              { v: 'trend',         label: '↗ Trend',      color: C.green,   bg: 'rgba(61,255,160,0.15)' },
-              { v: 'countertrend',  label: '↙ Counter',    color: C.yellow,  bg: 'rgba(255,209,102,0.15)' },
+              { v: null,            label: '—',            color: C.muted,  bg: C.item },
+              { v: 'trend',         label: '↗ Trend',      color: C.green,  bg: '#F0FDF4' },
+              { v: 'countertrend',  label: '↙ Counter',    color: C.yellow, bg: '#FFFBEB' },
             ] as { v: TradeType | null; label: string; color: string; bg: string }[]).map(o => (
               <button key={String(o.v)} type="button" onClick={() => setTradeType(o.v)} style={{
                 flex: 1, padding: '10px 6px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
@@ -167,7 +167,7 @@ export default function AddTrade() {
           </div>
           <div>
             <Label>PnL preview</Label>
-            <div style={{ ...field, ...mono, fontSize: 20, fontWeight: 700, color: pnlColor, display: 'flex', alignItems: 'center' }}>
+            <div style={{ ...field, ...mono, fontSize: 20, fontWeight: 700, color: pnlColor, display: 'flex', alignItems: 'center', background: pnlPreview > 0 ? '#F0FDF4' : pnlPreview < 0 ? '#FEF2F2' : C.item, borderColor: pnlPreview > 0 ? '#BBF7D0' : pnlPreview < 0 ? '#FECACA' : C.border }}>
               {pnlPreview > 0 ? '+' : ''}{pnlPreview}%
             </div>
           </div>

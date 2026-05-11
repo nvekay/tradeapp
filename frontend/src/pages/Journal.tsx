@@ -7,12 +7,12 @@ import { getTrades } from '../api/trades'
 import type { Trade } from '../types'
 
 const C = {
-  card: '#ffffff', item: '#f8fafc', border: 'rgba(0,0,0,0.08)',
-  text: '#0f172a', muted: '#64748b', dim: '#94a3b8',
-  green: '#10b981', red: '#f97316', yellow: '#f59e0b', purple: '#6366f1', blue: '#3b82f6',
-  purpleBtn: '#4f46e5', orange: '#f97316'
+  card: '#ffffff', item: '#F8FAFC', border: '#E2E8F0',
+  text: '#0F172A', muted: '#64748B', dim: '#94A3B8',
+  green: '#059669', red: '#DC2626', yellow: '#D97706', purple: '#2563EB', blue: '#2563EB',
+  purpleBtn: '#2563EB', orange: '#DC2626'
 }
-const mono: React.CSSProperties = { fontFamily: "'Space Mono', monospace" }
+const mono: React.CSSProperties = { fontFamily: "'JetBrains Mono', monospace" }
 
 const MOODS = [
   { val: 1, emoji: '😡', label: 'Ужасно' },
@@ -31,7 +31,7 @@ function MoodPicker({ value, onChange }: { value?: number | null, onChange: (v: 
           onClick={() => onChange(m.val)}
           style={{
             fontSize: 24, padding: '4px 8px', borderRadius: 8, cursor: 'pointer', border: 'none',
-            background: value === m.val ? 'rgba(99,102,241,0.15)' : 'transparent',
+            background: value === m.val ? '#EFF6FF' : 'transparent',
             filter: value === m.val || !value ? 'grayscale(0)' : 'grayscale(1)',
             transform: value === m.val ? 'scale(1.1)' : 'scale(1)',
             transition: 'all 0.15s'
@@ -201,7 +201,7 @@ export default function Journal() {
         {/* Left col: Form */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           
-          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: '24px 28px' }}>
+          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: '24px 28px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
               <span style={{ fontSize: 20 }}>☀️</span>
               <h2 style={{ margin: 0, fontSize: 18, color: C.text, fontWeight: 700 }}>Pre-Market (До торгов)</h2>
@@ -226,7 +226,7 @@ export default function Journal() {
             </div>
           </div>
           
-          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: '24px 28px' }}>
+          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: '24px 28px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
               <span style={{ fontSize: 20 }}>🌙</span>
               <h2 style={{ margin: 0, fontSize: 18, color: C.text, fontWeight: 700 }}>Post-Market (После торгов)</h2>
@@ -267,7 +267,7 @@ export default function Journal() {
 
         {/* Middle col: Day Summary */}
         <div>
-          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: '20px 22px', position: 'sticky', top: 20 }}>
+          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: '20px 22px', position: 'sticky', top: 20 }}>
             <div style={{ fontSize: 12, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 16 }}>Итог за {new Date(date).toLocaleDateString('ru')}</div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -310,7 +310,7 @@ export default function Journal() {
 
         {/* Right col: Journal History */}
         <div>
-          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: '20px 18px', position: 'sticky', top: 20 }}>
+          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: '20px 18px', position: 'sticky', top: 20 }}>
             <div style={{ fontSize: 12, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 14 }}>История записей</div>
             {allJournalDates.length === 0 ? (
               <div style={{ fontSize: 13, color: C.dim }}>Нет записей</div>

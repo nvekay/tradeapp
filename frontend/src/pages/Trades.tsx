@@ -4,12 +4,12 @@ import { getTrades, deleteTrade, importHtml, getExportUrl } from '../api/trades'
 import type { Trade } from '../types'
 
 const C = {
-  card: '#ffffff', item: '#f8fafc', border: 'rgba(0,0,0,0.08)',
-  text: '#0f172a', muted: '#64748b', dim: '#94a3b8',
-  green: '#10b981', red: '#f97316', yellow: '#f59e0b', purple: '#6366f1', blue: '#3b82f6',
-  purpleBtn: '#4f46e5', orange: '#f97316'
+  card: '#ffffff', item: '#F8FAFC', border: '#E2E8F0',
+  text: '#0F172A', muted: '#64748B', dim: '#94A3B8',
+  green: '#059669', red: '#DC2626', yellow: '#D97706', purple: '#2563EB', blue: '#2563EB',
+  purpleBtn: '#2563EB', orange: '#DC2626'
 }
-const mono: React.CSSProperties = { fontFamily: "'Space Mono', monospace" }
+const mono: React.CSSProperties = { fontFamily: "'JetBrains Mono', monospace" }
 
 type SortField = 'date' | 'symbol' | 'pnl_pct' | 'rating' | 'rr'
 type SortDir   = 'asc' | 'desc'
@@ -28,8 +28,8 @@ function DirBadge({ dir }: { dir: string }) {
       fontSize: 13, padding: '4px 10px', borderRadius: 5, fontWeight: 700,
       textTransform: 'uppercase', letterSpacing: '0.4px',
       color: long ? C.green : C.red,
-      background: long ? 'rgba(61,255,160,0.1)' : 'rgba(249,115,22,0.1)',
-      border: `1px solid ${long ? 'rgba(61,255,160,0.2)' : 'rgba(249,115,22,0.2)'}`,
+      background: long ? '#F0FDF4' : '#FEF2F2',
+      border: `1px solid ${long ? '#BBF7D0' : '#FECACA'}`,
     }}>
       {long ? '▲ Long' : '▼ Short'}
     </span>
@@ -54,9 +54,9 @@ function TypeBadge({ type }: { type: string | null }) {
 
 function ResultBadge({ result }: { result: string }) {
   const cfg: Record<string, { label: string; color: string; bg: string; border: string }> = {
-    take:  { label: 'Take', color: C.green,  bg: 'rgba(61,255,160,0.1)',   border: 'rgba(61,255,160,0.2)' },
-    stop:  { label: 'Stop', color: C.red,    bg: 'rgba(249,115,22,0.1)',   border: 'rgba(249,115,22,0.2)' },
-    'b/e': { label: 'B/E',  color: C.yellow, bg: 'rgba(255,209,102,0.1)', border: 'rgba(255,209,102,0.2)' },
+    take:  { label: 'Take', color: C.green,  bg: '#F0FDF4',   border: '#BBF7D0' },
+    stop:  { label: 'Stop', color: C.red,    bg: '#FEF2F2',   border: '#FECACA' },
+    'b/e': { label: 'B/E',  color: C.yellow, bg: '#FFFBEB', border: '#FDE68A' },
   }
   const s = cfg[result] ?? cfg.stop
   return (
@@ -491,7 +491,7 @@ export default function Trades() {
       ) : sorted.length === 0 ? (
         <p style={{ color: C.muted, fontSize: 15 }}>No trades found.</p>
       ) : (
-        <div style={{ overflowX: 'auto', borderRadius: 14, border: `1px solid ${C.border}` }}>
+        <div style={{ overflowX: 'auto', borderRadius: 16, border: `1px solid ${C.border}` }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: C.card, borderBottom: `1px solid ${C.border}` }}>

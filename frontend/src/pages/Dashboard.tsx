@@ -7,20 +7,20 @@ import { getJournalDates } from '../api/journal'
 import type { StatsSummary, PnlPoint, Trade, TagStat, FactorStat, MoodStat } from '../types'
 
 const C = {
-  card: '#ffffff', item: '#f8fafc', border: 'rgba(0,0,0,0.08)',
-  text: '#0f172a', muted: '#64748b', dim: '#94a3b8',
-  green: '#10b981', red: '#f97316', yellow: '#f59e0b', purple: '#6366f1', blue: '#3b82f6',
-  purpleBtn: '#4f46e5', orange: '#f97316'
+  card: '#ffffff', item: '#F8FAFC', border: '#E2E8F0',
+  text: '#0F172A', muted: '#64748B', dim: '#94A3B8',
+  green: '#059669', red: '#DC2626', yellow: '#D97706', purple: '#2563EB', blue: '#2563EB',
+  purpleBtn: '#2563EB', orange: '#DC2626'
 }
-const mono: React.CSSProperties = { fontFamily: "'Space Mono', monospace" }
+const mono: React.CSSProperties = { fontFamily: "'JetBrains Mono', monospace" }
 
 function pnlFmt(v: number) { return `${v > 0 ? '+' : ''}${v.toFixed(2)}%` }
 function pnlColor(v: number) { return v > 0 ? C.green : v < 0 ? C.red : C.muted }
 
 function StatCard({ label, value, color = C.text, sub }: { label: string; value: string; color?: string; sub?: string }) {
   return (
-    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
-      <div style={{ fontSize: 12, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 10 }}>{label}</div>
+    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: '18px 20px' }}>
+      <div style={{ fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, marginBottom: 10 }}>{label}</div>
       <div style={{ ...mono, fontSize: 24, fontWeight: 700, color, lineHeight: 1 }}>{value}</div>
       {sub && <div style={{ fontSize: 13, color: C.dim, marginTop: 8 }}>{sub}</div>}
     </div>
@@ -29,9 +29,9 @@ function StatCard({ label, value, color = C.text, sub }: { label: string; value:
 
 function Card({ title, children, right }: { title: string; children: React.ReactNode; right?: React.ReactNode }) {
   return (
-    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: '20px 22px' }}>
+    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: '20px 22px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-        <span style={{ fontSize: 12, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.7px' }}>{title}</span>
+        <span style={{ fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>{title}</span>
         {right}
       </div>
       {children}
@@ -67,8 +67,8 @@ function TradeItem({ t }: { t: Trade }) {
           fontSize: 10, padding: '2px 7px', borderRadius: 4, fontWeight: 700,
           textTransform: 'uppercase', letterSpacing: '0.4px', display: 'inline-block', marginTop: 4,
           color: dirColor,
-          background: t.direction === 'long' ? 'rgba(61,255,160,0.1)' : 'rgba(249,115,22,0.1)',
-          border: `1px solid ${t.direction === 'long' ? 'rgba(61,255,160,0.2)' : 'rgba(249,115,22,0.2)'}`,
+          background: t.direction === 'long' ? '#F0FDF4' : '#FEF2F2',
+          border: `1px solid ${t.direction === 'long' ? '#BBF7D0' : '#FECACA'}`,
         }}>
           {t.direction}
         </span>
@@ -310,7 +310,7 @@ export default function Dashboard() {
       background: C.purpleBtn, color: '#ffffff', border: 'none', borderRadius: 8,
       padding: '9px 18px', fontSize: 14, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit',
     }}
-      onMouseEnter={e => (e.currentTarget.style.background = C.purple)}
+      onMouseEnter={e => (e.currentTarget.style.background = '#1D4ED8')}
       onMouseLeave={e => (e.currentTarget.style.background = C.purpleBtn)}
     >{children}</button>
   )
@@ -319,9 +319,9 @@ export default function Dashboard() {
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       {(['all', 'week', 'month'] as Period[]).map(p => (
         <button key={p} onClick={() => handlePeriod(p)} style={{
-          background: period === p ? 'rgba(124,115,255,0.2)' : 'transparent',
-          color: period === p ? '#8b84ff' : C.muted,
-          border: `1px solid ${period === p ? 'rgba(124,115,255,0.4)' : C.border}`,
+          background: period === p ? '#EFF6FF' : 'transparent',
+          color: period === p ? C.purple : C.muted,
+          border: `1px solid ${period === p ? '#BFDBFE' : C.border}`,
           borderRadius: 7, padding: '6px 14px', fontSize: 13, fontWeight: 600,
           cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
         }}>
@@ -421,8 +421,8 @@ export default function Dashboard() {
               <AreaChart data={curve} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                 <defs>
                   <linearGradient id="pnlGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%"   stopColor="#3dffa0" stopOpacity={0.2} />
-                    <stop offset="100%" stopColor="#3dffa0" stopOpacity={0} />
+                    <stop offset="0%"   stopColor="#059669" stopOpacity={0.2} />
+                    <stop offset="100%" stopColor="#059669" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="date" hide />
@@ -468,7 +468,7 @@ export default function Dashboard() {
             {factorStats.slice(0, 5).map(f => (
               <div key={f.factor} style={{
                 padding: '5px 12px', borderRadius: 7,
-                border: `1px solid rgba(124,115,255,0.4)`, background: 'rgba(124,115,255,0.1)',
+                border: '1px solid #BFDBFE', background: '#EFF6FF',
                 ...mono, fontSize: 12, color: C.purple,
               }}>
                 {f.factor} · {f.total_trades}
