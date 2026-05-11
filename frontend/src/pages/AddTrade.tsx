@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { createTrade, getTrade, getTrades, updateTrade } from '../api/trades'
 import { listStrategies } from '../api/strategies'
 import type { Strategy } from '../types'
@@ -30,6 +30,8 @@ const inputClass = "w-full h-10 px-3 bg-white border border-[#E2E8F0] rounded-lg
 export default function AddTrade() {
   const navigate = useNavigate()
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
+  const duplicateId = searchParams.get('duplicate')
   const isEdit = Boolean(id)
   const { settings } = useSettings()
 
@@ -54,23 +56,25 @@ export default function AddTrade() {
   const [psyIds, setPsyIds] = useState<number[]>([])
   const [submitting, setSub] = useState(false)
   const [error, setError] = useState('')
+  const [setupError, setSetupError] = useState('')
   const [todayPnl, setTodayPnl] = useState<number | null>(null)
 
   useEffect(() => {
+    setSetupError('')
     listStrategies().then(s => {
       const active = s.filter(x => x.status === 'active')
       setStrategies(active)
       // Preselect default strategy only for new trades
-      if (!id) {
+      if (!id && !duplicateId) {
         const def = active.find(x => x.is_default)
         if (def) setStrategyId(def.id)
       }
-    }).catch(() => {})
-    getFactors().then(setFactorList).catch(() => {})
-    getPsychologyTags().then(setPsyList).catch(() => {})
-    getSymbols().then(setSymbolList).catch(() => {})
+    }).catch(() => setSetupError('Could not load strategies. You can still save the trade without a strategy.'))
+    getFactors().then(setFactorList).catch(() => setSetupError('Could not load factors. Try refreshing before saving.'))
+    getPsychologyTags().then(setPsyList).catch(() => setSetupError('Could not load psychology tags. Try refreshing before saving.'))
+    getSymbols().then(setSymbolList).catch(() => setSetupError('Could not load symbols. Try refreshing before saving.'))
     if (!id) getTrades().then(ts => setTodayPnl(getTodayPnlPct(ts))).catch(() => {})
-  }, [id])
+  }, [id, duplicateId])
 
   useEffect(() => {
     if (!id) return
@@ -91,8 +95,20 @@ export default function AddTrade() {
       // psyIds will be hydrated by effect below once psyList is loaded
       setTradeType(t.trade_type)
       setStrategyId(t.strategy_id ?? null)
-    })
+    }).catch(() => setError('Trade not found or could not be loaded.'))
   }, [id])
+
+  useEffect(() => {
+    if (!duplicateId || id) return
+    getTrade(Number(duplicateId)).then(t => {
+      setSymbol(t.symbol); setDir(t.direction); setRisk(t.risk); setRr(t.rr)
+      setResult(t.result); setDate(toLocalInput(new Date())); setSession(t.session)
+      setNotes(''); setScreenshots([])
+      setPsych(t.psychology); setFids(t.factors.map(f => f.id)); setRating(t.rating)
+      setTradeType(t.trade_type)
+      setStrategyId(t.strategy_id ?? null)
+    }).catch(() => setError('Source trade for duplication was not found. Start from a blank trade or go back.'))
+  }, [duplicateId, id])
 
   // Sync psyIds from psychology strings + psyList; create missing tags lazily on save
   useEffect(() => {
@@ -124,7 +140,9 @@ export default function AddTrade() {
       isEdit ? await updateTrade(Number(id), payload) : await createTrade(payload)
       navigate('/trades')
     } catch (e: unknown) {
-      setError((e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Error')
+      const detail = (e as { response?: { data?: { detail?: string | { msg?: string }[] } } })?.response?.data?.detail
+      const message = Array.isArray(detail) ? detail.map(x => x.msg).join(', ') : detail
+      setError(message || 'Could not save trade. Check the fields and try again.')
     } finally { setSub(false) }
   }
 
@@ -159,6 +177,18 @@ export default function AddTrade() {
         <h2 className="text-2xl font-bold text-[#0F172A] tracking-tight">{isEdit ? 'Edit Trade' : 'Новая сделка'}</h2>
         <p className="text-sm font-medium text-[#64748B] mt-1">Заполнение журнала параметров ордера</p>
       </div>
+
+      {duplicateId && (
+        <div className="mb-5 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm font-medium text-blue-800">
+          Setup copied from a previous trade; date is set to now.
+        </div>
+      )}
+
+      {setupError && (
+        <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-800">
+          {setupError}
+        </div>
+      )}
 
       {!isEdit && settings?.daily_loss_limit && todayPnl !== null && todayPnl <= settings.daily_loss_limit && (
         <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800">

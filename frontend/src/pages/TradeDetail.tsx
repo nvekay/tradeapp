@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Edit3, ExternalLink, X } from 'lucide-react'
+import { ArrowLeft, Copy, Edit3, ExternalLink, X } from 'lucide-react'
 import { getTrade } from '../api/trades'
 import { getJournal, type DailyJournal } from '../api/journal'
 import { getStrategy } from '../api/strategies'
@@ -34,14 +34,19 @@ export default function TradeDetail() {
   const [journal, setJournal] = useState<DailyJournal | null>(null)
   const [strategy, setStrategy] = useState<Strategy | null>(null)
   const [lightbox, setLightbox] = useState<Screenshot | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (!id) return
+    setLoading(true)
+    setError('')
     getTrade(Number(id)).then(async t => {
       setTrade(t)
       getJournal(tradeDay(t.date)).then(setJournal).catch(() => setJournal(null))
       if (t.strategy_id) getStrategy(t.strategy_id).then(setStrategy).catch(() => setStrategy(null))
-    })
+    }).catch(() => setError('Trade not found or could not be loaded.'))
+      .finally(() => setLoading(false))
   }, [id])
 
   const screenshots = useMemo(() => {
@@ -54,7 +59,18 @@ export default function TradeDetail() {
     return legacy
   }, [trade])
 
-  if (!trade) return <div className="text-[#64748B]">Loading...</div>
+  if (loading) return <div className="text-[#64748B]">Loading trade...</div>
+  if (error || !trade) {
+    return (
+      <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800">
+        <div className="text-sm font-bold">Could not open trade</div>
+        <p className="mt-1 text-sm">{error || 'Trade not found.'}</p>
+        <button onClick={() => navigate('/trades')} className="mt-4 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-red-800 hover:bg-red-100">
+          Back to trades
+        </button>
+      </div>
+    )
+  }
 
   const dt = new Date(trade.date + 'Z')
   const pnl = trade.result === 'b/e' ? 0 : trade.pnl_pct
@@ -71,9 +87,14 @@ export default function TradeDetail() {
             {dt.toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' })} • {dt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
           </p>
         </div>
-        <Link to={`/edit/${trade.id}`} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
-          <Edit3 size={14} /> Edit
-        </Link>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Link to={`/add?duplicate=${trade.id}`} className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-4 py-2.5 text-sm font-semibold text-[#0F172A] hover:bg-gray-50">
+            <Copy size={14} /> Duplicate
+          </Link>
+          <Link to={`/edit/${trade.id}`} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
+            <Edit3 size={14} /> Edit
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
