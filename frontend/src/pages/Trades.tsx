@@ -1,115 +1,30 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Plus, Download, FileText, Trash2, Pencil, Search, Upload } from 'lucide-react'
 import { getTrades, deleteTrade, importHtml, getExportUrl } from '../api/trades'
 import type { Trade } from '../types'
 
-const C = {
-  card: '#ffffff', item: '#F8FAFC', border: '#E2E8F0',
-  text: '#0F172A', muted: '#64748B', dim: '#94A3B8',
-  green: '#059669', red: '#DC2626', yellow: '#D97706', purple: '#2563EB', blue: '#2563EB',
-  purpleBtn: '#2563EB', orange: '#DC2626'
-}
-const mono: React.CSSProperties = { fontFamily: "'JetBrains Mono', monospace" }
-
 type SortField = 'date' | 'symbol' | 'pnl_pct' | 'rating' | 'rr'
-type SortDir   = 'asc' | 'desc'
+type SortDir = 'asc' | 'desc'
+
 interface Filters {
   symbol: string; direction: string; result: string; rating: string
   from: string; to: string
 }
 
-function pnlColor(v: number) { return v > 0 ? C.green : v < 0 ? C.red : C.muted }
-function pnlFmt(v: number)   { return `${v > 0 ? '+' : ''}${v.toFixed(2)}%` }
+const fmt = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(2)}%`
 
-function DirBadge({ dir }: { dir: string }) {
-  const long = dir === 'long'
-  return (
-    <span style={{
-      fontSize: 13, padding: '4px 10px', borderRadius: 5, fontWeight: 700,
-      textTransform: 'uppercase', letterSpacing: '0.4px',
-      color: long ? C.green : C.red,
-      background: long ? '#F0FDF4' : '#FEF2F2',
-      border: `1px solid ${long ? '#BBF7D0' : '#FECACA'}`,
-    }}>
-      {long ? '▲ Long' : '▼ Short'}
-    </span>
-  )
-}
+function pnlColor(v: number) { return v > 0 ? '#059669' : v < 0 ? '#DC2626' : '#64748B' }
 
-function TypeBadge({ type }: { type: string | null }) {
-  if (!type) return <span style={{ color: C.dim, fontSize: 14 }}>—</span>
-  const trend = type === 'trend'
-  return (
-    <span style={{
-      fontSize: 13, padding: '4px 10px', borderRadius: 5, fontWeight: 700,
-      textTransform: 'uppercase', letterSpacing: '0.4px',
-      color: trend ? C.green : C.yellow,
-      background: trend ? 'rgba(61,255,160,0.1)' : 'rgba(255,209,102,0.1)',
-      border: `1px solid ${trend ? 'rgba(61,255,160,0.2)' : 'rgba(255,209,102,0.2)'}`,
-    }}>
-      {trend ? '↗ Trend' : '↙ Counter'}
-    </span>
-  )
-}
-
-function ResultBadge({ result }: { result: string }) {
-  const cfg: Record<string, { label: string; color: string; bg: string; border: string }> = {
-    take:  { label: 'Take', color: C.green,  bg: '#F0FDF4',   border: '#BBF7D0' },
-    stop:  { label: 'Stop', color: C.red,    bg: '#FEF2F2',   border: '#FECACA' },
-    'b/e': { label: 'B/E',  color: C.yellow, bg: '#FFFBEB', border: '#FDE68A' },
-  }
-  const s = cfg[result] ?? cfg.stop
-  return (
-    <span style={{
-      fontSize: 13, padding: '4px 10px', borderRadius: 5, fontWeight: 700,
-      textTransform: 'uppercase', letterSpacing: '0.4px',
-      color: s.color, background: s.bg, border: `1px solid ${s.border}`,
-    }}>{s.label}</span>
-  )
-}
-
-function Hearts({ v }: { v: number }) {
-  return (
-    <span style={{ fontSize: 16 }}>
-      {[1,2,3,4,5].map(i => (
-        <span key={i} style={{ color: i <= v ? C.red : C.dim }}>{i <= v ? '♥' : '♡'}</span>
-      ))}
-    </span>
-  )
-}
-
-function Tags({ items, color, bg, border }: { items: string[]; color: string; bg: string; border: string }) {
-  if (!items.length) return <span style={{ color: C.dim, fontSize: 14 }}>—</span>
-  const show = items.slice(0, 2)
-  const rest = items.length - 2
-  return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-      {show.map(t => (
-        <span key={t} style={{ fontSize: 13, padding: '4px 10px', borderRadius: 20, color, background: bg, border: `1px solid ${border}` }}>{t}</span>
-      ))}
-      {rest > 0 && <span style={{ fontSize: 13, color: C.dim }}>+{rest}</span>}
-    </div>
-  )
-}
-
-const inputStyle: React.CSSProperties = {
-  background: C.card, border: `1px solid ${C.border}`, borderRadius: 8,
-  padding: '8px 14px', fontSize: 14, color: C.text, outline: 'none',
-  fontFamily: 'inherit', cursor: 'pointer',
-}
-
-// ─── PDF generator (browser print → Save as PDF) ─────────────────────────────
+/* ─── PDF export (browser print) ──────────────────────────────────────── */
 function exportPdf(trades: Trade[], filters: Filters) {
-  const totalPnl  = trades.reduce((s, t) => s + t.pnl_pct, 0)
-  const wins      = trades.filter(t => t.pnl_pct > 0).length
-  const losses    = trades.filter(t => t.pnl_pct < 0).length
-  const winrate   = trades.length ? Math.round(wins / trades.length * 100) : 0
-  const avgWin    = wins   ? trades.filter(t => t.pnl_pct > 0).reduce((s, t) => s + t.pnl_pct, 0) / wins   : 0
-  const avgLoss   = losses ? trades.filter(t => t.pnl_pct < 0).reduce((s, t) => s + t.pnl_pct, 0) / losses : 0
-  const bestTrade = trades.reduce<Trade|null>((b, t) => !b || t.pnl_pct > b.pnl_pct ? t : b, null)
-  const worstTrade= trades.reduce<Trade|null>((b, t) => !b || t.pnl_pct < b.pnl_pct ? t : b, null)
+  const totalPnl = trades.reduce((s, t) => s + t.pnl_pct, 0)
+  const wins = trades.filter(t => t.pnl_pct > 0).length
+  const losses = trades.filter(t => t.pnl_pct < 0).length
+  const winrate = trades.length ? Math.round(wins / trades.length * 100) : 0
+  const avgWin = wins ? trades.filter(t => t.pnl_pct > 0).reduce((s, t) => s + t.pnl_pct, 0) / wins : 0
+  const avgLoss = losses ? trades.filter(t => t.pnl_pct < 0).reduce((s, t) => s + t.pnl_pct, 0) / losses : 0
 
-  const fmt = (v: number) => (v >= 0 ? '+' : '') + v.toFixed(2) + '%'
   const fmtDate = (raw: string) => {
     const d = new Date(raw + 'Z')
     return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' })
@@ -118,449 +33,306 @@ function exportPdf(trades: Trade[], filters: Filters) {
   const hearts = (n: number) => '♥'.repeat(n) + '♡'.repeat(5 - n)
 
   const filterParts: string[] = []
-  if (filters.from)      filterParts.push(`С ${filters.from}`)
-  if (filters.to)        filterParts.push(`По ${filters.to}`)
-  if (filters.symbol)    filterParts.push(`Символ: ${filters.symbol}`)
-  if (filters.direction) filterParts.push(filters.direction === 'long' ? 'Long' : 'Short')
-  if (filters.result)    filterParts.push(filters.result.toUpperCase())
+  if (filters.symbol) filterParts.push(`Symbol: ${filters.symbol}`)
+  if (filters.direction) filterParts.push(`Direction: ${filters.direction}`)
+  if (filters.result) filterParts.push(`Result: ${filters.result}`)
+  if (filters.rating) filterParts.push(`Rating: ${filters.rating}+`)
+  if (filters.from) filterParts.push(`From: ${filters.from}`)
+  if (filters.to) filterParts.push(`To: ${filters.to}`)
 
-  const statsCards = [
-    { label: 'Total P&L',  value: fmt(totalPnl),         color: totalPnl >= 0 ? '#10b981' : '#f97316' },
-    { label: 'Трейдов',    value: String(trades.length),  color: '#0f172a' },
-    { label: 'Win Rate',   value: winrate + '%',           color: winrate >= 50 ? '#10b981' : '#f97316' },
-    { label: 'Avg Win',    value: '+' + avgWin.toFixed(2) + '%',  color: '#10b981' },
-    { label: 'Avg Loss',   value: avgLoss.toFixed(2) + '%',       color: '#f97316' },
-    { label: 'Best Trade', value: bestTrade ? fmt(bestTrade.pnl_pct) : '—', color: '#10b981' },
-    { label: 'Worst Trade',value: worstTrade ? fmt(worstTrade.pnl_pct) : '—', color: '#f97316' },
-  ]
-
-  const rowsHtml = trades.map((t, i) => {
-    const pnlClr = t.pnl_pct > 0 ? '#10b981' : t.pnl_pct < 0 ? '#f97316' : '#64748b'
-    const dirClr = t.direction === 'long' ? '#10b981' : '#f97316'
-    const resClr = t.result === 'take' ? '#10b981' : t.result === 'stop' ? '#f97316' : '#f59e0b'
-    const bg = i % 2 === 0 ? '#ffffff' : '#f8fafc'
-    const psych = t.psychology?.join(', ') || '—'
-    const factors = t.factors?.map(f => f.name).join(', ') || '—'
-    return `
-      <tr style="background:${bg}">
-        <td>${fmtDate(t.date)}</td>
-        <td style="font-weight:700">${t.symbol}</td>
-        <td style="color:${dirClr};font-weight:700">${t.direction.toUpperCase()}</td>
-        <td>${t.session.replace('_', ' ')}</td>
-        <td style="color:${resClr};font-weight:700">${t.result.toUpperCase()}</td>
-        <td>${t.risk}%</td>
-        <td>${t.rr}</td>
-        <td style="color:${pnlClr};font-weight:700">${fmt(t.pnl_pct)}</td>
-        <td>${hearts(t.rating)}</td>
-        <td style="color:#6366f1;font-size:9.5px">${psych}</td>
-        <td style="color:#3b82f6;font-size:9.5px">${factors}</td>
-        <td style="color:#64748b;font-size:9.5px">${t.notes || '—'}</td>
-      </tr>`
-  }).join('')
-
-  const now = new Date().toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' })
-
-  const html = `<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8"/>
-<title>Trading Journal — Экспорт</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Inter', sans-serif; background: #f1f5f9; color: #0f172a; font-size: 11px; }
-
-  .page { max-width: 1200px; margin: 0 auto; }
-
-  /* Header */
-  .header {
-    background: linear-gradient(135deg, #1a1641 0%, #2d2480 100%);
-    color: white; padding: 22px 32px;
-    display: flex; justify-content: space-between; align-items: flex-end;
-  }
-  .header-title { font-family: 'Space Mono', monospace; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
-  .header-sub { font-size: 11px; color: #b4b0dc; margin-top: 4px; }
-  .header-right { text-align: right; }
-  .header-date { font-size: 11px; color: #b4b0dc; }
-  .header-filters { font-size: 10px; color: #8b87c8; margin-top: 4px; }
-
-  /* Stats */
-  .stats { display: flex; gap: 10px; padding: 18px 32px; background: #fff; border-bottom: 1px solid #e2e8f0; }
-  .stat-card {
-    flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
-    padding: 12px 14px; text-align: center;
-  }
-  .stat-label { font-size: 9px; color: #64748b; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; margin-bottom: 6px; }
-  .stat-value { font-family: 'Space Mono', monospace; font-size: 16px; font-weight: 700; }
-
-  /* Table */
-  .table-wrap { padding: 18px 32px 32px; }
-  table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
-  thead tr { background: #1a1641; }
-  thead th {
-    color: #c4bfee; font-size: 9px; font-weight: 600; text-transform: uppercase;
-    letter-spacing: 0.8px; padding: 10px 10px; text-align: left; white-space: nowrap;
-  }
-  tbody td { padding: 9px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
-
-  /* Footer */
-  .footer {
-    background: #1a1641; color: #8b87c8; padding: 10px 32px;
-    display: flex; justify-content: space-between; font-size: 9px;
-  }
-
-  /* Summary bar */
-  .summary-bar {
-    background: #f8fafc; border-top: 1px solid #e2e8f0;
-    padding: 10px 32px; display: flex; gap: 24px;
-    font-size: 10px; color: #64748b;
-  }
-  .summary-bar span b { font-family: 'Space Mono', monospace; }
-
-  @media print {
-    body { background: white; }
-    @page { size: A4 landscape; margin: 0; }
-    .page { max-width: 100%; }
-  }
-</style>
-</head>
-<body>
-<div class="page">
-
-  <div class="header">
-    <div>
-      <div class="header-title">Trading Journal — Экспорт</div>
-      <div class="header-sub">${trades.length} трейдов · сформирован ${now}</div>
-    </div>
-    <div class="header-right">
-      <div class="header-date">${now}</div>
-      ${filterParts.length ? `<div class="header-filters">${filterParts.join(' · ')}</div>` : ''}
-    </div>
-  </div>
-
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>tradestat — Trades Export</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; padding: 30px; color: #0F172A; background: white; font-size: 13px; }
+    .header { background: #2563EB; color: white; padding: 24px; border-radius: 14px; margin-bottom: 24px; }
+    .header h1 { font-size: 24px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.5px; }
+    .header p { opacity: 0.85; font-size: 13px; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+    .stat { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px; }
+    .stat .lbl { font-size: 10px; color: #64748B; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+    .stat .val { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; }
+    .filters { background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; font-size: 12px; color: #1E40AF; }
+    table { width: 100%; border-collapse: collapse; background: white; border: 1px solid #E2E8F0; border-radius: 10px; overflow: hidden; }
+    th { background: #F8FAFC; border-bottom: 1px solid #E2E8F0; padding: 10px 8px; text-align: left; font-size: 10px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.06em; }
+    td { padding: 10px 8px; border-bottom: 1px solid #F1F5F9; font-size: 12px; }
+    .mono { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+    .pos { color: #059669; } .neg { color: #DC2626; } .neu { color: #64748B; }
+    .footer { margin-top: 24px; padding-top: 14px; border-top: 1px solid #E2E8F0; font-size: 11px; color: #94A3B8; text-align: center; }
+    @media print { body { padding: 15px; } }
+  </style></head><body>
+  <div class="header"><h1>tradestat</h1><p>Trade Export — ${new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}</p></div>
   <div class="stats">
-    ${statsCards.map(c => `
-      <div class="stat-card">
-        <div class="stat-label">${c.label}</div>
-        <div class="stat-value" style="color:${c.color}">${c.value}</div>
-      </div>`).join('')}
+    <div class="stat"><div class="lbl">Total Trades</div><div class="val">${trades.length}</div></div>
+    <div class="stat"><div class="lbl">Win Rate</div><div class="val">${winrate}%</div></div>
+    <div class="stat"><div class="lbl">Total PnL</div><div class="val ${totalPnl > 0 ? 'pos' : totalPnl < 0 ? 'neg' : 'neu'}">${fmt(totalPnl)}</div></div>
+    <div class="stat"><div class="lbl">Avg Win / Loss</div><div class="val"><span class="pos">${fmt(avgWin)}</span> / <span class="neg">${fmt(avgLoss)}</span></div></div>
   </div>
-
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Дата</th><th>Символ</th><th>Dir</th><th>Сессия</th>
-          <th>Рез.</th><th>Risk%</th><th>RR</th><th>PnL%</th>
-          <th>Оценка</th><th>Психология</th><th>Факторы</th><th>Заметки</th>
-        </tr>
-      </thead>
-      <tbody>${rowsHtml}</tbody>
-    </table>
-  </div>
-
-  <div class="summary-bar">
-    ${bestTrade  ? `<span>Лучший: <b style="color:#10b981">${bestTrade.symbol} ${fmt(bestTrade.pnl_pct)}</b></span>` : ''}
-    ${worstTrade ? `<span>Худший: <b style="color:#f97316">${worstTrade.symbol} ${fmt(worstTrade.pnl_pct)}</b></span>` : ''}
-    <span>Побед: <b>${wins}</b></span>
-    <span>Поражений: <b>${losses}</b></span>
-    <span>B/E: <b>${trades.length - wins - losses}</b></span>
-  </div>
-
-  <div class="footer">
-    <span>Trading Journal</span>
-    <span>Используй Ctrl+P → "Сохранить как PDF" · Ориентация: Альбомная</span>
-  </div>
-
-</div>
-<script>
-  // wait for Google Fonts to load, then print
-  document.fonts.ready.then(() => setTimeout(() => window.print(), 400))
-</script>
-</body>
-</html>`
+  ${filterParts.length ? `<div class="filters"><b>Filters:</b> ${filterParts.join(' • ')}</div>` : ''}
+  <table><thead><tr>
+    <th>Date</th><th>Symbol</th><th>Dir</th><th>Result</th><th>Risk</th><th>RR</th><th>PnL</th><th>Rating</th><th>Session</th><th>Psychology</th><th>Factors</th>
+  </tr></thead><tbody>
+  ${trades.map(t => `<tr>
+    <td>${fmtDate(t.date)}</td><td class="mono">${t.symbol}</td>
+    <td>${t.direction === 'long' ? '▲ Long' : '▼ Short'}</td>
+    <td>${t.result === 'take' ? 'Take' : t.result === 'stop' ? 'Stop' : 'B/E'}</td>
+    <td class="mono">${t.risk}%</td><td class="mono">1:${t.rr}</td>
+    <td class="mono ${t.pnl_pct > 0 ? 'pos' : t.pnl_pct < 0 ? 'neg' : 'neu'}">${t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}</td>
+    <td>${hearts(t.rating)}</td>
+    <td>${t.session.replace('_', ' ')}</td>
+    <td>${t.psychology.join(', ') || '—'}</td>
+    <td>${t.factors.map(f => f.name).join(', ') || '—'}</td>
+  </tr>`).join('')}
+  </tbody></table>
+  <div class="footer">tradestat • personal trading journal</div>
+  </body></html>`
 
   const w = window.open('', '_blank', 'width=1280,height=900')
   if (!w) return
-  w.document.open()
-  w.document.write(html)
-  w.document.close()
+  w.document.write(html); w.document.close()
+  w.addEventListener('load', () => setTimeout(() => w.print(), 400))
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
 export default function Trades() {
   const navigate = useNavigate()
   const [trades, setTrades] = useState<Trade[]>([])
   const [loading, setLoading] = useState(true)
-  const [filters, setFilters] = useState<Filters>({ symbol: '', direction: '', result: '', rating: '', from: '', to: '' })
   const [sortField, setSortField] = useState<SortField>('date')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
-  const [confirmDelete, setConfirmDelete] = useState<number | null>(null)
-  const [importing, setImporting] = useState(false)
+  const [filters, setFilters] = useState<Filters>({ symbol: '', direction: '', result: '', rating: '', from: '', to: '' })
 
-  const apiFilters = useMemo(() => ({
-    symbol:    filters.symbol    || undefined,
-    direction: filters.direction || undefined,
-    result:    filters.result    || undefined,
-    rating:    filters.rating    ? Number(filters.rating)              : undefined,
-    from:      filters.from      ? new Date(filters.from + 'T00:00:00').toISOString() : undefined,
-    to:        filters.to        ? new Date(filters.to   + 'T23:59:59').toISOString() : undefined,
-  }), [filters])
+  const apiFilters = useMemo(() => {
+    const f: { from?: string; to?: string } = {}
+    if (filters.from) f.from = `${filters.from}T00:00:00`
+    if (filters.to) f.to = `${filters.to}T23:59:59`
+    return f
+  }, [filters.from, filters.to])
 
-  const load = () => {
+  useEffect(() => {
     setLoading(true)
     getTrades(apiFilters).then(setTrades).finally(() => setLoading(false))
-  }
-  useEffect(() => { load() }, [JSON.stringify(apiFilters)])
+  }, [apiFilters])
 
-  const sorted = useMemo(() => [...trades].sort((a, b) => {
-    let va: number | string = a[sortField] as number | string
-    let vb: number | string = b[sortField] as number | string
-    if (sortField === 'date') { va = new Date(va).getTime(); vb = new Date(vb).getTime() }
-    if (va < vb) return sortDir === 'asc' ? -1 : 1
-    if (va > vb) return sortDir === 'asc' ? 1 : -1
-    return 0
-  }), [trades, sortField, sortDir])
+  const filtered = useMemo(() => {
+    return trades.filter(t => {
+      if (filters.symbol && !t.symbol.toLowerCase().includes(filters.symbol.toLowerCase())) return false
+      if (filters.direction && t.direction !== filters.direction) return false
+      if (filters.result && t.result !== filters.result) return false
+      if (filters.rating && t.rating < Number(filters.rating)) return false
+      return true
+    })
+  }, [trades, filters])
 
-  const handleSort = (f: SortField) => {
-    sortField === f ? setSortDir(d => d === 'asc' ? 'desc' : 'asc') : (setSortField(f), setSortDir('desc'))
+  const sorted = useMemo(() => {
+    const arr = [...filtered]
+    arr.sort((a, b) => {
+      const va = a[sortField], vb = b[sortField]
+      if (typeof va === 'number' && typeof vb === 'number') return sortDir === 'asc' ? va - vb : vb - va
+      return sortDir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va))
+    })
+    return arr
+  }, [filtered, sortField, sortDir])
+
+  const toggleSort = (f: SortField) => {
+    if (sortField === f) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortField(f); setSortDir('desc') }
   }
+
   const handleDelete = async (id: number) => {
-    await deleteTrade(id); setConfirmDelete(null); setTrades(prev => prev.filter(t => t.id !== id))
-  }
-  const setFilter = (k: keyof Filters, v: string) => setFilters(p => ({ ...p, [k]: v }))
-  const hasFilters = Object.values(filters).some(Boolean)
-
-  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const balanceStr = window.prompt("Enter Account Balance for PnL% calculation:", "100000")
-    const balance = balanceStr ? parseFloat(balanceStr) : 100000
-    setImporting(true)
-    try {
-      const res = await importHtml(file, balance || 100000)
-      alert(`Successfully imported ${res.imported} trades!`)
-      load()
-    } catch (err: any) {
-      alert("Failed to import: " + (err.response?.data?.detail || err.message))
-    } finally {
-      setImporting(false)
-      e.target.value = ''
-    }
+    if (!confirm('Delete this trade?')) return
+    await deleteTrade(id)
+    setTrades(t => t.filter(x => x.id !== id))
   }
 
-  const totalPnl = trades.reduce((s, t) => s + t.pnl_pct, 0)
-  const wins = trades.filter(t => t.pnl_pct > 0).length
-  const winrate = trades.length ? (wins / trades.length * 100).toFixed(0) : '—'
-
-  const Th = ({ field, label }: { field: SortField; label: string }) => (
-    <th onClick={() => handleSort(field)}
-      style={{ padding: '12px 16px', textAlign: 'left', fontSize: 13, color: C.muted, cursor: 'pointer',
-        textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 600, whiteSpace: 'nowrap', userSelect: 'none' }}>
-      {label}{sortField === field && <span style={{ marginLeft: 4 }}>{sortDir === 'asc' ? '↑' : '↓'}</span>}
-    </th>
-  )
-  const PlainTh = ({ label }: { label: string }) => (
-    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 13, color: C.muted,
-      textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 600 }}>{label}</th>
-  )
-
-  // quick-set shortcuts
-  const setQuickRange = (preset: 'today' | 'week' | 'month') => {
+  const setQuickRange = (range: 'today' | 'week' | 'month' | 'all') => {
     const now = new Date()
     const fmt = (d: Date) => d.toISOString().split('T')[0]
-    if (preset === 'today') {
-      setFilters(p => ({ ...p, from: fmt(now), to: fmt(now) }))
-    } else if (preset === 'week') {
-      const mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7))
-      setFilters(p => ({ ...p, from: fmt(mon), to: fmt(now) }))
-    } else {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1)
-      setFilters(p => ({ ...p, from: fmt(start), to: fmt(now) }))
+    if (range === 'all') { setFilters(f => ({ ...f, from: '', to: '' })); return }
+    if (range === 'today') { setFilters(f => ({ ...f, from: fmt(now), to: fmt(now) })); return }
+    if (range === 'week') {
+      const start = new Date(now); start.setDate(now.getDate() - 7)
+      setFilters(f => ({ ...f, from: fmt(start), to: fmt(now) })); return
+    }
+    if (range === 'month') {
+      const start = new Date(now); start.setMonth(now.getMonth() - 1)
+      setFilters(f => ({ ...f, from: fmt(start), to: fmt(now) }))
     }
   }
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    importHtml(file).then(() => getTrades(apiFilters).then(setTrades))
+  }
+
+  const SortBtn = ({ field, label, className = '' }: { field: SortField; label: string; className?: string }) => (
+    <button onClick={() => toggleSort(field)} className={`inline-flex items-center gap-1 hover:text-[#0F172A] ${className}`}>
+      {label} {sortField === field && <span className="text-[#2563EB]">{sortDir === 'asc' ? '▲' : '▼'}</span>}
+    </button>
+  )
 
   return (
     <div>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+      <div className="flex flex-col md:flex-row md:justify-between md:items-end mb-6 gap-4">
         <div>
-          <div style={{ ...mono, fontSize: 20, color: C.text, fontWeight: 700 }}>Trades</div>
-          <div style={{ fontSize: 14, color: C.dim, marginTop: 4 }}>
-            {trades.length} trades{trades.length > 0 && ` · ${pnlFmt(totalPnl)} total · ${winrate}% WR`}
+          <h2 className="text-2xl font-bold text-[#0F172A] tracking-tight">Trade Log</h2>
+          <p className="text-sm font-medium text-[#64748B] mt-1">{sorted.length} of {trades.length} trades</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <label className="px-3 py-2 bg-white border border-[#E2E8F0] text-[#0F172A] text-xs font-semibold rounded-lg hover:bg-gray-50 cursor-pointer transition-colors flex items-center gap-1.5" style={{ boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }}>
+            <Upload size={13} /> Import HTML
+            <input type="file" accept=".html,.htm" onChange={handleImport} className="hidden" />
+          </label>
+          <a href={getExportUrl(apiFilters)} download="trades_export.csv"
+            className="px-3 py-2 bg-white border border-[#E2E8F0] text-[#0F172A] text-xs font-semibold rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5" style={{ boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }}>
+            <Download size={13} /> CSV
+          </a>
+          <button onClick={() => exportPdf(sorted, filters)} className="px-3 py-2 bg-white border border-[#E2E8F0] text-[#0F172A] text-xs font-semibold rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5" style={{ boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }}>
+            <FileText size={13} /> PDF
+          </button>
+          <button onClick={() => navigate('/add')} className="px-4 py-2 bg-[#2563EB] text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5" style={{ boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }}>
+            <Plus size={13} strokeWidth={2.5} /> Log Trade
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-[#F1F5F9] overflow-hidden flex flex-col" style={{ boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }}>
+
+        {/* Filters Row */}
+        <div className="p-3 border-b border-[#F1F5F9] flex flex-wrap gap-2 items-center bg-gray-50/50">
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+            <input value={filters.symbol} onChange={e => setFilters(f => ({ ...f, symbol: e.target.value }))}
+              placeholder="Search symbol..." className="h-9 pl-9 pr-3 bg-white border border-[#E2E8F0] rounded-lg text-xs w-56 focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] text-[#0F172A]" />
+          </div>
+
+          <select value={filters.direction} onChange={e => setFilters(f => ({ ...f, direction: e.target.value }))}
+            className="h-9 pl-3 pr-8 bg-white border border-[#E2E8F0] rounded-lg text-xs font-medium text-[#0F172A] focus:outline-none cursor-pointer">
+            <option value="">All Directions</option><option value="long">Long</option><option value="short">Short</option>
+          </select>
+
+          <select value={filters.result} onChange={e => setFilters(f => ({ ...f, result: e.target.value }))}
+            className="h-9 pl-3 pr-8 bg-white border border-[#E2E8F0] rounded-lg text-xs font-medium text-[#0F172A] focus:outline-none cursor-pointer">
+            <option value="">All Results</option><option value="take">Take</option><option value="stop">Stop</option><option value="b/e">B/E</option>
+          </select>
+
+          <select value={filters.rating} onChange={e => setFilters(f => ({ ...f, rating: e.target.value }))}
+            className="h-9 pl-3 pr-8 bg-white border border-[#E2E8F0] rounded-lg text-xs font-medium text-[#0F172A] focus:outline-none cursor-pointer">
+            <option value="">All Ratings</option><option value="5">5★</option><option value="4">4★+</option><option value="3">3★+</option>
+          </select>
+
+          <div className="flex items-center gap-1 ml-2">
+            <input type="date" value={filters.from} onChange={e => setFilters(f => ({ ...f, from: e.target.value }))}
+              className="h-9 px-2 bg-white border border-[#E2E8F0] rounded-lg text-xs focus:outline-none focus:border-[#2563EB]" />
+            <span className="text-[#94A3B8] text-xs">—</span>
+            <input type="date" value={filters.to} onChange={e => setFilters(f => ({ ...f, to: e.target.value }))}
+              className="h-9 px-2 bg-white border border-[#E2E8F0] rounded-lg text-xs focus:outline-none focus:border-[#2563EB]" />
+          </div>
+
+          <div className="flex gap-1 ml-2">
+            {(['today', 'week', 'month', 'all'] as const).map(r => (
+              <button key={r} onClick={() => setQuickRange(r)} className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider bg-white border border-[#E2E8F0] rounded-md hover:bg-gray-50 text-[#64748B] hover:text-[#0F172A] transition-colors">
+                {r === 'all' ? 'All' : r === 'today' ? 'Today' : r === 'week' ? 'Week' : 'Month'}
+              </button>
+            ))}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          {/* CSV */}
-          <a href={getExportUrl(apiFilters)} download="trades_export.csv" style={{
-            background: C.card, color: C.text, border: `1px solid ${C.border}`, borderRadius: 8,
-            padding: '9px 16px', fontSize: 14, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit',
-            textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6,
-          }}
-            onMouseEnter={e => (e.currentTarget.style.background = C.item)}
-            onMouseLeave={e => (e.currentTarget.style.background = C.card)}
-          >
-            ↓ CSV
-          </a>
 
-          {/* PDF */}
-          <button onClick={() => exportPdf(sorted, filters)} style={{
-            background: '#1a1641', color: '#fff', border: 'none', borderRadius: 8,
-            padding: '9px 16px', fontSize: 14, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit',
-            display: 'flex', alignItems: 'center', gap: 6,
-          }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#231d5c')}
-            onMouseLeave={e => (e.currentTarget.style.background = '#1a1641')}
-          >
-            ↓ PDF
-          </button>
-
-          {/* Import */}
-          <label style={{
-            background: C.card, color: C.text, border: `1px solid ${C.border}`, borderRadius: 8,
-            padding: '9px 16px', fontSize: 14, cursor: importing ? 'wait' : 'pointer', fontWeight: 600,
-            fontFamily: 'inherit', display: 'flex', alignItems: 'center', opacity: importing ? 0.6 : 1,
-          }}
-            onMouseEnter={e => !importing && (e.currentTarget.style.background = C.item)}
-            onMouseLeave={e => !importing && (e.currentTarget.style.background = C.card)}
-          >
-            {importing ? 'Importing...' : '↑ Import HTML'}
-            <input type="file" accept=".html" onChange={handleImport} disabled={importing} style={{ display: 'none' }} />
-          </label>
-
-          <button onClick={() => navigate('/add')} style={{
-            background: C.purpleBtn, color: '#ffffff', border: 'none', borderRadius: 8,
-            padding: '9px 18px', fontSize: 14, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit',
-          }}
-            onMouseEnter={e => (e.currentTarget.style.background = C.purple)}
-            onMouseLeave={e => (e.currentTarget.style.background = C.purpleBtn)}
-          >+ Add Trade</button>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: '14px 18px', marginBottom: 18 }}>
-        {/* Row 1: text + selects */}
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
-          <input type="text" placeholder="Symbol..." value={filters.symbol}
-            onChange={e => setFilter('symbol', e.target.value.toUpperCase())}
-            style={{ ...inputStyle, width: 110 }} />
-          {(['direction', 'result', 'rating'] as const).map(key => (
-            <select key={key} value={filters[key]} onChange={e => setFilter(key, e.target.value)} style={inputStyle}>
-              {key === 'direction' && (<><option value="">All directions</option><option value="long">Long</option><option value="short">Short</option></>)}
-              {key === 'result'    && (<><option value="">All results</option><option value="take">Take</option><option value="stop">Stop</option><option value="b/e">B/E</option></>)}
-              {key === 'rating'    && (<><option value="">All ratings</option>{[5,4,3,2,1].map(r => <option key={r} value={r}>{'♥'.repeat(r)}</option>)}</>)}
-            </select>
-          ))}
-        </div>
-
-        {/* Row 2: date range */}
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13, color: C.muted, fontWeight: 600 }}>Период:</span>
-          <input type="date" value={filters.from} onChange={e => setFilter('from', e.target.value)}
-            style={{ ...inputStyle, fontSize: 13 }} />
-          <span style={{ color: C.dim, fontSize: 13 }}>—</span>
-          <input type="date" value={filters.to} onChange={e => setFilter('to', e.target.value)}
-            style={{ ...inputStyle, fontSize: 13 }} />
-
-          {/* Quick presets */}
-          {(['today', 'week', 'month'] as const).map(p => (
-            <button key={p} onClick={() => setQuickRange(p)} style={{
-              background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 7,
-              padding: '5px 12px', fontSize: 12, color: C.muted, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600,
-              transition: 'all 0.12s',
-            }}
-              onMouseEnter={e => { e.currentTarget.style.background = C.item; e.currentTarget.style.color = C.text }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.muted }}
-            >
-              {p === 'today' ? 'Сегодня' : p === 'week' ? 'Неделя' : 'Месяц'}
-            </button>
-          ))}
-
-          {hasFilters && (
-            <button onClick={() => setFilters({ symbol: '', direction: '', result: '', rating: '', from: '', to: '' })}
-              style={{ ...inputStyle, color: C.muted, cursor: 'pointer', fontSize: 13 }}>
-              ✕ Сбросить
-            </button>
-          )}
-        </div>
-      </div>
-
-      {loading ? (
-        <p style={{ color: C.muted, fontSize: 15 }}>Loading...</p>
-      ) : sorted.length === 0 ? (
-        <p style={{ color: C.muted, fontSize: 15 }}>No trades found.</p>
-      ) : (
-        <div style={{ overflowX: 'auto', borderRadius: 16, border: `1px solid ${C.border}` }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: C.card, borderBottom: `1px solid ${C.border}` }}>
-                <Th field="date" label="Date" />
-                <Th field="symbol" label="Symbol" />
-                <PlainTh label="Dir" />
-                <PlainTh label="Risk%" />
-                <Th field="rr" label="RR" />
-                <PlainTh label="Result" />
-                <Th field="pnl_pct" label="PnL%" />
-                <Th field="rating" label="Rating" />
-                <PlainTh label="Type" />
-                <PlainTh label="Psychology" />
-                <PlainTh label="Factors" />
-                <PlainTh label="Notes" />
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((t, idx) => (
-                <tr key={t.id}
-                  style={{ borderBottom: idx < sorted.length - 1 ? `1px solid rgba(0,0,0,0.04)` : 'none', background: C.card, transition: 'background 0.12s' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = C.item)}
-                  onMouseLeave={e => (e.currentTarget.style.background = C.card)}
-                >
-                  <td style={{ padding: '14px 16px', color: C.muted, fontSize: 15, whiteSpace: 'nowrap' }}>
-                    {new Date(t.date + 'Z').toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' })}
-                    <br /><span style={{ color: C.dim, fontSize: 13 }}>{new Date(t.date + 'Z').toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
-                  </td>
-                  <td style={{ padding: '14px 16px', ...mono, fontSize: 15, fontWeight: 700, color: C.text, whiteSpace: 'nowrap' }}>{t.symbol}</td>
-                  <td style={{ padding: '14px 16px' }}><DirBadge dir={t.direction} /></td>
-                  <td style={{ padding: '14px 16px', ...mono, fontSize: 15, color: C.text }}>{t.risk}%</td>
-                  <td style={{ padding: '14px 16px', ...mono, fontSize: 15, color: C.text }}>{t.rr}</td>
-                  <td style={{ padding: '14px 16px' }}><ResultBadge result={t.result} /></td>
-                  <td style={{ padding: '14px 16px', ...mono, fontSize: 16, fontWeight: 700, color: pnlColor(t.pnl_pct), whiteSpace: 'nowrap' }}>{pnlFmt(t.pnl_pct)}</td>
-                  <td style={{ padding: '14px 16px' }}><Hearts v={t.rating} /></td>
-                  <td style={{ padding: '14px 16px' }}><TypeBadge type={t.trade_type} /></td>
-                  <td style={{ padding: '14px 16px', maxWidth: 200 }}>
-                    <Tags items={t.psychology} color={C.purple} bg="rgba(124,115,255,0.1)" border="rgba(124,115,255,0.2)" />
-                  </td>
-                  <td style={{ padding: '14px 16px', maxWidth: 180 }}>
-                    <Tags items={t.factors.map(f => f.name)} color={C.blue} bg="rgba(94,184,255,0.1)" border="rgba(94,184,255,0.2)" />
-                  </td>
-                  <td style={{ padding: '14px 16px', maxWidth: 200 }}>
-                    {t.notes
-                      ? <span style={{ fontSize: 14, color: C.muted, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={t.notes}>{t.notes}</span>
-                      : <span style={{ color: C.dim, fontSize: 14 }}>—</span>
-                    }
-                  </td>
-                  <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
-                    {confirmDelete === t.id ? (
-                      <span style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 14 }}>
-                        <span style={{ color: C.muted }}>Delete?</span>
-                        <button onClick={() => handleDelete(t.id)} style={{ background: 'none', border: 'none', color: C.red, cursor: 'pointer', fontSize: 14, padding: 0, fontWeight: 600 }}>Yes</button>
-                        <button onClick={() => setConfirmDelete(null)} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 14, padding: 0 }}>No</button>
-                      </span>
-                    ) : (
-                      <span style={{ display: 'flex', gap: 14 }}>
-                        <button onClick={() => navigate(`/edit/${t.id}`)} style={{ background: 'none', border: 'none', color: C.purple, cursor: 'pointer', fontSize: 14, padding: 0 }}>Edit</button>
-                        <button onClick={() => setConfirmDelete(t.id)} style={{ background: 'none', border: 'none', color: C.red, cursor: 'pointer', fontSize: 14, padding: 0, opacity: 0.6 }}>Del</button>
-                      </span>
-                    )}
-                  </td>
+        {loading ? (
+          <div className="p-12 text-center text-[#64748B]">Loading...</div>
+        ) : sorted.length === 0 ? (
+          <div className="p-12 text-center text-[#94A3B8]">No trades found</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse whitespace-nowrap min-w-[900px]">
+              <thead className="bg-white border-b border-[#F1F5F9]">
+                <tr>
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-[#64748B] uppercase tracking-wider"><SortBtn field="symbol" label="Asset & Time" /></th>
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-[#64748B] uppercase tracking-wider">Setup</th>
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-[#64748B] uppercase tracking-wider"><SortBtn field="rr" label="Metrics (Risk / RR)" /></th>
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-[#64748B] uppercase tracking-wider">Context & Tags</th>
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-[#64748B] uppercase tracking-wider text-right"><SortBtn field="pnl_pct" label="Result PnL" className="ml-auto" /></th>
+                  <th className="px-3 py-3.5"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {sorted.map(t => {
+                  const dt = new Date(t.date + 'Z')
+                  const dirColor = t.direction === 'long' ? 'text-[#059669]' : 'text-[#DC2626]'
+                  const typeColor = !t.trade_type ? 'text-[#94A3B8]' : t.trade_type === 'trend' ? 'text-[#059669]' : 'text-[#D97706]'
+                  const typeText = !t.trade_type ? '—' : t.trade_type === 'trend' ? 'Trend' : 'Counter'
+                  const isWin = t.pnl_pct > 0
+                  const isLoss = t.pnl_pct < 0
+                  const resultClass = t.result === 'take' ? 'bg-green-50 border-green-100 text-[#059669]'
+                    : t.result === 'stop' ? 'bg-red-50 border-red-100 text-[#DC2626]'
+                    : 'bg-amber-50 border-amber-100 text-[#D97706]'
+                  const resultText = t.result === 'take' ? 'Take Profit' : t.result === 'stop' ? 'Stop Loss' : 'Break Even'
+                  const pnlClass = isWin ? 'text-[#059669]' : isLoss ? 'text-[#DC2626]' : 'text-[#64748B]'
+                  return (
+                    <tr key={t.id} onClick={() => navigate(`/edit/${t.id}`)}
+                      className="border-b border-[#F1F5F9]/60 hover:bg-gray-50/80 transition-colors cursor-pointer group">
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center font-bold text-xs text-[#0F172A]">{t.symbol.slice(0, 2)}</div>
+                          <div>
+                            <div className="font-bold text-sm text-[#0F172A]">{t.symbol}</div>
+                            <div className="text-[11px] text-[#64748B] font-medium">
+                              {dt.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} • {dt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[11px] font-bold ${dirColor}`}>{t.direction === 'long' ? 'Long' : 'Short'}</span>
+                            <span className="text-gray-300">•</span>
+                            <span className={`text-[11px] font-bold ${typeColor}`}>{typeText}</span>
+                          </div>
+                          <div className="text-[11px] font-medium text-[#64748B] capitalize">{t.session.replace('_', ' ')} Session</div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex flex-col gap-1">
+                          <div className="text-sm font-mono text-[#0F172A] font-medium">{t.risk}% <span className="text-[10px] text-[#64748B] font-sans ml-1 uppercase tracking-widest font-bold">Risk</span></div>
+                          <div className="text-sm font-mono text-[#0F172A] font-medium">1:{t.rr} <span className="text-[10px] text-[#64748B] font-sans ml-1 uppercase tracking-widest font-bold">RR</span></div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex flex-wrap gap-1.5 max-w-[280px]">
+                          {t.psychology.slice(0, 2).map(p => {
+                            const isBad = ['FOMO', 'Мстительная торговля', 'Эмоциональный вход', 'Жадность'].some(x => p.includes(x))
+                            const cls = isBad ? 'bg-red-50 text-red-700 border-red-200'
+                              : p.toLowerCase().includes('систем') ? 'bg-green-50 text-green-700 border-green-200'
+                              : 'bg-gray-100 text-gray-700 border-gray-200'
+                            return <span key={p} className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${cls}`}>{p.split('/')[0].trim()}</span>
+                          })}
+                          {t.factors.slice(0, 2).map(f => (
+                            <span key={f.id} className="px-2 py-0.5 rounded-md text-[10px] font-bold border bg-gray-100 text-gray-700 border-gray-200">{f.name}</span>
+                          ))}
+                          {(t.psychology.length + t.factors.length) > 4 && <span className="text-[11px] text-[#94A3B8]">+{t.psychology.length + t.factors.length - 4}</span>}
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <div className="flex flex-col items-end gap-1">
+                          <div className={`font-mono text-lg font-bold ${pnlClass}`}>{t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}</div>
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest border ${resultClass}`}>{resultText}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex gap-1">
+                          <button onClick={e => { e.stopPropagation(); navigate(`/edit/${t.id}`) }} className="p-1.5 rounded-md hover:bg-blue-50 text-[#64748B] hover:text-[#2563EB] transition-colors"><Pencil size={14} /></button>
+                          <button onClick={e => { e.stopPropagation(); handleDelete(t.id) }} className="p-1.5 rounded-md hover:bg-red-50 text-[#64748B] hover:text-[#DC2626] transition-colors"><Trash2 size={14} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
