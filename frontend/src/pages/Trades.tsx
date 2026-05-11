@@ -273,7 +273,46 @@ export default function Trades() {
         ) : sorted.length === 0 ? (
           <div className="p-12 text-center text-[#94A3B8]">No trades found</div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="space-y-3 p-3 md:hidden">
+            {sorted.map(t => {
+              const dt = new Date(t.date + 'Z')
+              const isWin = t.pnl_pct > 0
+              const isLoss = t.pnl_pct < 0
+              const pnlClass = isWin ? 'text-[#059669]' : isLoss ? 'text-[#DC2626]' : 'text-[#64748B]'
+              const resultClass = t.result === 'take' ? 'bg-green-50 border-green-100 text-[#059669]'
+                : t.result === 'stop' ? 'bg-red-50 border-red-100 text-[#DC2626]'
+                : 'bg-amber-50 border-amber-100 text-[#D97706]'
+              return (
+                <div key={t.id} onClick={() => navigate(`/trade/${t.id}`)}
+                  className="rounded-2xl border border-[#F1F5F9] bg-white p-4 shadow-sm">
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-bold text-[#0F172A]">{t.symbol}</div>
+                      <div className="mt-0.5 text-xs font-medium text-[#64748B]">
+                        {dt.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} • {dt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className={`font-mono text-lg font-bold ${pnlClass}`}>{t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}</div>
+                      {settings && t.result !== 'b/e' && <div className={`font-mono text-xs ${pnlClass}`}>{fmtMoney(t.pnl_pct, settings.account_size, settings.currency)}</div>}
+                    </div>
+                  </div>
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    <span className="rounded-lg bg-gray-100 px-2 py-1 text-[11px] font-bold capitalize text-gray-700">{t.direction}</span>
+                    <span className="rounded-lg bg-gray-100 px-2 py-1 text-[11px] font-bold capitalize text-gray-700">{t.session.replace('_', ' ')}</span>
+                    <span className={`rounded-lg border px-2 py-1 text-[11px] font-bold ${resultClass}`}>{t.result === 'b/e' ? 'B/E' : t.result}</span>
+                    <span className="rounded-lg bg-gray-100 px-2 py-1 text-[11px] font-bold text-gray-700">{t.risk}% risk / 1:{t.rr}</span>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-[#F1F5F9] pt-3">
+                    <button onClick={e => { e.stopPropagation(); navigate(`/edit/${t.id}`) }} className="inline-flex items-center gap-1 text-xs font-bold text-[#2563EB]"><Pencil size={13} /> Edit</button>
+                    <button onClick={e => { e.stopPropagation(); handleDelete(t.id) }} className="inline-flex items-center gap-1 text-xs font-bold text-[#DC2626]"><Trash2 size={13} /> Delete</button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-left border-collapse whitespace-nowrap min-w-[900px]">
               <thead className="bg-white border-b border-[#F1F5F9]">
                 <tr>
@@ -299,7 +338,7 @@ export default function Trades() {
                   const resultText = t.result === 'take' ? 'Take Profit' : t.result === 'stop' ? 'Stop Loss' : 'Break Even'
                   const pnlClass = isWin ? 'text-[#059669]' : isLoss ? 'text-[#DC2626]' : 'text-[#64748B]'
                   return (
-                    <tr key={t.id} onClick={() => navigate(`/edit/${t.id}`)}
+                    <tr key={t.id} onClick={() => navigate(`/trade/${t.id}`)}
                       className="border-b border-[#F1F5F9]/60 hover:bg-gray-50/80 transition-colors cursor-pointer group">
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
@@ -360,6 +399,7 @@ export default function Trades() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
     </div>

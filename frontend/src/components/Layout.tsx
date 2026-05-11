@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, List, PlusCircle, Brain, Settings, ClipboardList, BookOpen, LogOut, Target } from 'lucide-react'
+import { LayoutDashboard, List, PlusCircle, Brain, Settings, ClipboardList, BookOpen, LogOut, Target, Menu, X } from 'lucide-react'
 
 const navItems = [
   { to: '/',          icon: LayoutDashboard, end: true },
@@ -12,6 +13,7 @@ const navItems = [
 
 export default function Layout() {
   const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
 
   const handleLogout = () => {
     localStorage.removeItem('token')
@@ -20,10 +22,27 @@ export default function Layout() {
 
   return (
     <div className="flex min-h-screen" style={{ background: '#F3F4F6', color: '#0F172A' }}>
-      <nav
-        className="fixed left-0 top-0 bottom-0 flex flex-col items-center py-4 z-10"
-        style={{ width: 72, background: '#ffffff', borderRight: '1px solid #E2E8F0', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.03)' }}
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="fixed left-4 top-4 z-30 flex h-11 w-11 items-center justify-center rounded-xl border border-[#E2E8F0] bg-white text-[#0F172A] shadow-sm md:hidden"
+        aria-label="Open menu"
       >
+        <Menu size={20} />
+      </button>
+      {open && <div className="fixed inset-0 z-30 bg-black/30 md:hidden" onClick={() => setOpen(false)} />}
+      <nav
+        className={`fixed left-0 top-0 bottom-0 z-40 flex w-[260px] flex-col items-center py-4 transition-transform duration-200 md:z-10 md:w-[72px] ${open ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+        style={{ background: '#ffffff', borderRight: '1px solid #E2E8F0', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.03)' }}
+      >
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-lg bg-gray-50 text-[#64748B] md:hidden"
+          aria-label="Close menu"
+        >
+          <X size={18} />
+        </button>
         {/* Logo — bar chart icon */}
         <div style={{
           width: 40, height: 40, background: '#2563EB', borderRadius: 12,
@@ -40,7 +59,7 @@ export default function Layout() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%', padding: '0 8px' }}>
           {navItems.map(({ to, icon: Icon, end }) => (
-            <NavLink key={to} to={to} end={end}
+            <NavLink key={to} to={to} end={end} onClick={() => setOpen(false)}
               style={({ isActive }) => ({
                 width: '100%', height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 borderRadius: 12, transition: 'all 0.15s', cursor: 'pointer',
@@ -56,7 +75,7 @@ export default function Layout() {
         <div style={{ width: 28, height: 1, background: '#E2E8F0', margin: '10px auto' }} />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%', padding: '0 8px', marginTop: 'auto' }}>
-          <NavLink to="/news" end={false}
+          <NavLink to="/news" end={false} onClick={() => setOpen(false)}
             style={({ isActive }) => ({
               width: '100%', height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
               borderRadius: 12, transition: 'all 0.15s', cursor: 'pointer',
@@ -67,7 +86,7 @@ export default function Layout() {
             {({ isActive }) => <Brain size={20} color={isActive ? '#2563EB' : '#64748B'} strokeWidth={isActive ? 2.2 : 1.8} />}
           </NavLink>
 
-          <NavLink to="/settings"
+          <NavLink to="/settings" onClick={() => setOpen(false)}
             style={({ isActive }) => ({
               width: '100%', height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
               borderRadius: 12, transition: 'all 0.15s', cursor: 'pointer',
@@ -89,7 +108,7 @@ export default function Layout() {
         </div>
       </nav>
 
-      <main className="flex-1 overflow-auto" style={{ marginLeft: 72, padding: '24px 28px' }}>
+      <main className="flex-1 overflow-auto px-4 pb-6 pt-20 md:ml-[72px] md:px-7 md:py-6">
         <Outlet />
       </main>
     </div>

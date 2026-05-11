@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { createTrade, getTrade, updateTrade } from '../api/trades'
+import { createTrade, getTrade, getTrades, updateTrade } from '../api/trades'
 import { listStrategies } from '../api/strategies'
 import type { Strategy } from '../types'
 import type { Direction, TradeResult, Session, TradeType } from '../types'
@@ -14,6 +14,8 @@ import { getPsychologyTags, createPsychologyTag } from '../api/psychology'
 import { getSymbols, createSymbol } from '../api/symbols'
 import type { UserSymbol } from '../api/symbols'
 import type { Factor, Screenshot } from '../types'
+import { fmtMoney, useSettings } from '../contexts/SettingsContext'
+import { getTodayPnlPct } from '../components/DailyLossBanner'
 
 function toLocalInput(d: Date): string {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
@@ -29,6 +31,7 @@ export default function AddTrade() {
   const navigate = useNavigate()
   const { id } = useParams()
   const isEdit = Boolean(id)
+  const { settings } = useSettings()
 
   const [symbol, setSymbol] = useState('GER40')
   const [direction, setDir] = useState<Direction>('long')
@@ -51,6 +54,7 @@ export default function AddTrade() {
   const [psyIds, setPsyIds] = useState<number[]>([])
   const [submitting, setSub] = useState(false)
   const [error, setError] = useState('')
+  const [todayPnl, setTodayPnl] = useState<number | null>(null)
 
   useEffect(() => {
     listStrategies().then(s => {
@@ -65,6 +69,7 @@ export default function AddTrade() {
     getFactors().then(setFactorList).catch(() => {})
     getPsychologyTags().then(setPsyList).catch(() => {})
     getSymbols().then(setSymbolList).catch(() => {})
+    if (!id) getTrades().then(ts => setTodayPnl(getTodayPnlPct(ts))).catch(() => {})
   }, [id])
 
   useEffect(() => {
@@ -104,6 +109,10 @@ export default function AddTrade() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setSub(true); setError('')
+    if (!isEdit && settings?.daily_loss_limit && todayPnl !== null && todayPnl <= settings.daily_loss_limit) {
+      const proceed = window.confirm('Daily loss limit is already reached. Save this new trade anyway?')
+      if (!proceed) { setSub(false); return }
+    }
     try {
       const payload = {
         symbol, direction, risk, rr, result, date: new Date(date).toISOString(),
@@ -151,7 +160,17 @@ export default function AddTrade() {
         <p className="text-sm font-medium text-[#64748B] mt-1">Заполнение журнала параметров ордера</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-[#F1F5F9] p-8" style={{ boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }}>
+      {!isEdit && settings?.daily_loss_limit && todayPnl !== null && todayPnl <= settings.daily_loss_limit && (
+        <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800">
+          <div className="text-sm font-bold">Daily loss limit reached</div>
+          <div className="mt-1 text-xs font-medium">
+            Today you are at <span className="font-mono">{todayPnl.toFixed(2)}%</span> ({fmtMoney(todayPnl, settings.account_size, settings.currency)}).
+            Limit is <span className="font-mono">{settings.daily_loss_limit.toFixed(2)}%</span>. This form stays available for corrections, but opening a new trade should be paused.
+          </div>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-[#F1F5F9] p-4 sm:p-8" style={{ boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }}>
         <div className="space-y-6">
 
           {/* Row 1: Symbol / Direction / Result */}

@@ -7,6 +7,8 @@ import { getTrades } from '../api/trades'
 import { getJournalDates } from '../api/journal'
 import type { StatsSummary, PnlPoint, Trade, TagStat, FactorStat, MoodStat } from '../types'
 import { useSettings, fmtMoney } from '../contexts/SettingsContext'
+import DailyLossBanner from '../components/DailyLossBanner'
+import PerformanceHeatmap from '../components/PerformanceHeatmap'
 
 const COLORS = {
   primary: '#2563EB', success: '#059669', error: '#DC2626', warning: '#D97706',
@@ -280,6 +282,7 @@ export default function Dashboard() {
   return (
     <div>
       <Header />
+      <DailyLossBanner trades={allTrades} />
 
       {/* Bento Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5 mb-5">
@@ -336,7 +339,7 @@ export default function Dashboard() {
             <button onClick={() => navigate('/trades')} className="text-xs font-semibold text-[#2563EB] hover:underline">View grid →</button>
           </div>
           <div className="flex-1 overflow-y-auto p-2">
-            {recent.map(t => <FeedItem key={t.id} t={t} onClick={() => navigate(`/edit/${t.id}`)} />)}
+            {recent.map(t => <FeedItem key={t.id} t={t} onClick={() => navigate(`/trade/${t.id}`)} />)}
             {recent.length === 0 && <div className="text-center text-sm text-[#94A3B8] py-8">No trades yet</div>}
           </div>
         </div>
@@ -439,6 +442,10 @@ export default function Dashboard() {
           </span>
         </div>
         <PnlCalendar trades={allTrades} journalDates={journalDates} onDayClick={d => navigate(`/journal?date=${d}`)} />
+      </div>
+
+      <div className="mt-5">
+        <PerformanceHeatmap trades={allTrades} />
       </div>
 
       {/* Factors used */}
