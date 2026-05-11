@@ -72,7 +72,16 @@ export default function AddTrade() {
     getTrade(Number(id)).then(t => {
       setSymbol(t.symbol); setDir(t.direction); setRisk(t.risk); setRr(t.rr)
       setResult(t.result); setDate(toLocalInput(new Date(t.date + 'Z'))); setSession(t.session)
-      setNotes(t.notes ?? ''); setSs5m(t.screenshot_5m ?? ''); setSs1h(t.screenshot_1h ?? ''); setSs4h(t.screenshot_4h ?? '')
+      setNotes(t.notes ?? '')
+      const ss = (t as { screenshots?: Screenshot[] }).screenshots
+      if (ss && ss.length > 0) setScreenshots(ss)
+      else {
+        const legacy: Screenshot[] = []
+        if (t.screenshot_5m) legacy.push({ label: '5m', url: t.screenshot_5m })
+        if (t.screenshot_1h) legacy.push({ label: '1h', url: t.screenshot_1h })
+        if (t.screenshot_4h) legacy.push({ label: '4h', url: t.screenshot_4h })
+        setScreenshots(legacy)
+      }
       setPsych(t.psychology); setFids(t.factors.map(f => f.id)); setRating(t.rating)
       // psyIds will be hydrated by effect below once psyList is loaded
       setTradeType(t.trade_type)
