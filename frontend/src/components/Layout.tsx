@@ -7,6 +7,7 @@ const navItems = [
   { to: '/add',       icon: PlusCircle,      end: false },
   { to: '/checklist', icon: ClipboardList,   end: false },
   { to: '/journal',   icon: BookOpen,        end: false },
+  { to: '/strategies', icon: Target,         end: false },
 ]
 
 export default function Layout() {
