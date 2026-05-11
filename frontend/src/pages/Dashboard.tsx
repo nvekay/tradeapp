@@ -15,7 +15,6 @@ const COLORS = {
 }
 
 const fmt = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(2)}%`
-const fmtMoney = (v: number) => `${v >= 0 ? '+' : '-'}$${Math.abs(v).toFixed(0)}`
 const pnlColor = (v: number) => v > 0 ? COLORS.success : v < 0 ? COLORS.error : COLORS.muted
 
 type Period = 'all' | 'week' | 'month'

@@ -14,8 +14,6 @@ interface Filters {
 
 const fmt = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(2)}%`
 
-function pnlColor(v: number) { return v > 0 ? '#059669' : v < 0 ? '#DC2626' : '#64748B' }
-
 /* ─── PDF export (browser print) ──────────────────────────────────────── */
 function exportPdf(trades: Trade[], filters: Filters) {
   const totalPnl = trades.reduce((s, t) => s + t.pnl_pct, 0)
