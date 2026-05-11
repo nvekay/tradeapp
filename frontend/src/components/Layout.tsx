@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, List, PlusCircle, Brain, Settings, ClipboardList, BookOpen, LogOut } from 'lucide-react'
+import { LayoutDashboard, List, PlusCircle, Brain, Settings, ClipboardList, BookOpen, LogOut, Target } from 'lucide-react'
 
 const navItems = [
   { to: '/',          icon: LayoutDashboard, end: true },
