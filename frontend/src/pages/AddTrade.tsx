@@ -32,6 +32,7 @@ export default function AddTrade() {
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   const duplicateId = searchParams.get('duplicate')
+  const dateParam = searchParams.get('date')
   const isEdit = Boolean(id)
   const { settings } = useSettings()
 
@@ -40,7 +41,7 @@ export default function AddTrade() {
   const [risk, setRisk] = useState(1.0)
   const [rr, setRr] = useState(2.0)
   const [result, setResult] = useState<TradeResult>('take')
-  const [date, setDate] = useState(() => toLocalInput(new Date()))
+  const [date, setDate] = useState(() => dateParam ? `${dateParam}T12:00` : toLocalInput(new Date()))
   const [session, setSession] = useState<Session>('london')
   const [notes, setNotes] = useState('')
   const [screenshots, setScreenshots] = useState<Screenshot[]>([])
