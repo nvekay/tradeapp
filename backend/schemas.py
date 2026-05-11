@@ -75,6 +75,7 @@ class TradeBase(BaseModel):
     psychology: list[str] = []
     rating: int = 0
     trade_type: Optional[Literal["trend", "countertrend"]] = None
+    strategy_id: Optional[int] = None
 
     @field_validator("rating")
     @classmethod
@@ -128,6 +129,7 @@ class TradeUpdate(BaseModel):
     psychology: Optional[list[str]] = None
     rating: Optional[int] = None
     trade_type: Optional[Literal["trend", "countertrend"]] = None
+    strategy_id: Optional[int] = None
     factor_ids: Optional[list[int]] = None
     pnl_pct: Optional[float] = None
 
@@ -171,5 +173,64 @@ class DailyJournalUpdate(BaseModel):
 
 class DailyJournalOut(DailyJournalBase):
     id: int
+
+    model_config = {"from_attributes": True}
+
+
+# --- Strategy ---
+
+class StrategyStatus(str, Enum):
+    active = "active"
+    draft = "draft"
+    archived = "archived"
+
+
+class StrategyBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    status: StrategyStatus = StrategyStatus.active
+    color: Optional[str] = "#2563EB"
+    emoji: Optional[str] = "🎯"
+    allowed_directions: list[Direction] = []
+    allowed_sessions: list[Session] = []
+    allowed_symbols: list[str] = []
+    trade_type: Optional[Literal["trend", "countertrend"]] = None
+    max_risk_pct: float = 1.0
+    min_rr: float = 1.5
+    setup_checklist: list[str] = []
+    sl_logic: Optional[str] = None
+    tp_logic: Optional[str] = None
+
+
+class StrategyCreate(StrategyBase):
+    pass
+
+
+class StrategyUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[StrategyStatus] = None
+    color: Optional[str] = None
+    emoji: Optional[str] = None
+    allowed_directions: Optional[list[Direction]] = None
+    allowed_sessions: Optional[list[Session]] = None
+    allowed_symbols: Optional[list[str]] = None
+    trade_type: Optional[Literal["trend", "countertrend"]] = None
+    max_risk_pct: Optional[float] = None
+    min_rr: Optional[float] = None
+    setup_checklist: Optional[list[str]] = None
+    sl_logic: Optional[str] = None
+    tp_logic: Optional[str] = None
+
+
+class StrategyOut(StrategyBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+    # Aggregated stats (populated by the endpoint)
+    total_trades: int = 0
+    winrate: float = 0.0
+    total_pnl_pct: float = 0.0
+    avg_rr: float = 0.0
 
     model_config = {"from_attributes": True}

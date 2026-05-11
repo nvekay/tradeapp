@@ -51,6 +51,7 @@ def create_trade(payload: TradeCreate, current_user: User = Depends(get_current_
         rating=payload.rating,
         trade_type=payload.trade_type,
         factors=factors,
+        strategy_id=payload.strategy_id,
     )
     db.add(trade)
     db.commit()

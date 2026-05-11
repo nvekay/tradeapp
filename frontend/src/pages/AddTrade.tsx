@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createTrade, getTrade, updateTrade } from '../api/trades'
+import { listStrategies } from '../api/strategies'
+import type { Strategy } from '../types'
 import type { Direction, TradeResult, Session, TradeType } from '../types'
 import { PSYCHOLOGY_OPTIONS, SYMBOLS, SESSION_LABELS } from '../constants'
 import HeartPicker from '../components/HeartPicker'
@@ -38,8 +40,12 @@ export default function AddTrade() {
   const [psychology, setPsych] = useState<string[]>([])
   const [factorIds, setFids] = useState<number[]>([])
   const [rating, setRating] = useState(0)
+  const [strategyId, setStrategyId] = useState<number | null>(null)
+  const [strategies, setStrategies] = useState<Strategy[]>([])
   const [submitting, setSub] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => { listStrategies().then(s => setStrategies(s.filter(x => x.status === 'active'))).catch(() => {}) }, [])
 
   useEffect(() => {
     if (!id) return
@@ -49,6 +55,7 @@ export default function AddTrade() {
       setNotes(t.notes ?? ''); setSs5m(t.screenshot_5m ?? ''); setSs1h(t.screenshot_1h ?? ''); setSs4h(t.screenshot_4h ?? '')
       setPsych(t.psychology); setFids(t.factors.map(f => f.id)); setRating(t.rating)
       setTradeType(t.trade_type)
+      setStrategyId(t.strategy_id ?? null)
     })
   }, [id])
 
@@ -66,6 +73,7 @@ export default function AddTrade() {
         session, notes: notes || undefined,
         screenshot_5m: ss5m || undefined, screenshot_1h: ss1h || undefined, screenshot_4h: ss4h || undefined,
         psychology, factor_ids: factorIds, rating, trade_type: tradeType || undefined,
+        strategy_id: strategyId,
       }
       isEdit ? await updateTrade(Number(id), payload) : await createTrade(payload)
       navigate('/trades')
@@ -202,6 +210,16 @@ export default function AddTrade() {
           <div>
             <Label>Rating</Label>
             <HeartPicker value={rating} onChange={setRating} />
+          </div>
+
+          {/* Strategy */}
+          <div>
+            <Label>Strategy</Label>
+            <select value={strategyId ?? ''} onChange={e => setStrategyId(e.target.value ? Number(e.target.value) : null)}
+              className={`${inputClass} cursor-pointer`}>
+              <option value="">— No strategy —</option>
+              {strategies.map(s => <option key={s.id} value={s.id}>{s.emoji} {s.name}</option>)}
+            </select>
           </div>
 
           {/* Notes */}

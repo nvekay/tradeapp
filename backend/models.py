@@ -56,8 +56,10 @@ class Trade(Base):
     rating = Column(Integer, nullable=False, default=0)
     trade_type = Column(String, nullable=True)  # "trend" | "countertrend"
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    strategy_id = Column(Integer, ForeignKey("strategies.id", ondelete="SET NULL"), nullable=True)
 
     user = relationship("User", back_populates="trades")
+    strategy = relationship("Strategy", back_populates="trades")
     factors = relationship("Factor", secondary="trade_factors", back_populates="trades")
 
 
@@ -73,3 +75,28 @@ class DailyJournal(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
 
     user = relationship("User", back_populates="journals")
+
+
+class Strategy(Base):
+    __tablename__ = "strategies"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(String, nullable=False, default="active")  # active | draft | archived
+    color = Column(String, nullable=True, default="#2563EB")
+    emoji = Column(String, nullable=True, default="🎯")
+    allowed_directions = Column(JSON, nullable=False, default=list)   # ["long","short"]
+    allowed_sessions = Column(JSON, nullable=False, default=list)
+    allowed_symbols = Column(JSON, nullable=False, default=list)
+    trade_type = Column(String, nullable=True)  # "trend" | "countertrend" | None=any
+    max_risk_pct = Column(Float, nullable=False, default=1.0)
+    min_rr = Column(Float, nullable=False, default=1.5)
+    setup_checklist = Column(JSON, nullable=False, default=list)
+    sl_logic = Column(Text, nullable=True)
+    tp_logic = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    trades = relationship("Trade", back_populates="strategy")

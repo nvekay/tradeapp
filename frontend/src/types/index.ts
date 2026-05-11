@@ -26,6 +26,7 @@ export interface Trade {
   rating: number
   trade_type: TradeType | null
   factors: Factor[]
+  strategy_id?: number | null
 }
 
 export interface TradeCreate {
@@ -44,6 +45,7 @@ export interface TradeCreate {
   rating?: number
   trade_type?: TradeType | null
   factor_ids?: number[]
+  strategy_id?: number | null
 }
 
 export interface TradeUpdate extends Partial<TradeCreate> {}
@@ -95,4 +97,50 @@ export interface MoodStat {
   total_trades: number
   winrate: number
   avg_pnl_pct: number
+}
+
+
+// --- Strategy ---
+
+export type StrategyStatus = 'active' | 'draft' | 'archived'
+
+export interface Strategy {
+  id: number
+  name: string
+  description?: string | null
+  status: StrategyStatus
+  color?: string | null
+  emoji?: string | null
+  allowed_directions: Direction[]
+  allowed_sessions: Session[]
+  allowed_symbols: string[]
+  trade_type?: TradeType | null
+  max_risk_pct: number
+  min_rr: number
+  setup_checklist: string[]
+  sl_logic?: string | null
+  tp_logic?: string | null
+  created_at: string
+  updated_at: string
+  total_trades: number
+  winrate: number
+  total_pnl_pct: number
+  avg_rr: number
+}
+
+export interface StrategyCreate {
+  name: string
+  description?: string
+  status?: StrategyStatus
+  color?: string
+  emoji?: string
+  allowed_directions?: Direction[]
+  allowed_sessions?: Session[]
+  allowed_symbols?: string[]
+  trade_type?: TradeType | null
+  max_risk_pct?: number
+  min_rr?: number
+  setup_checklist?: string[]
+  sl_logic?: string
+  tp_logic?: string
 }

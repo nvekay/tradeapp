@@ -7,6 +7,9 @@ import AddTrade from './pages/AddTrade'
 import News from './pages/News'
 import Checklist from './pages/Checklist'
 import Journal from './pages/Journal'
+import Strategies from './pages/Strategies'
+import StrategyForm from './pages/StrategyForm'
+import StrategyDetail from './pages/StrategyDetail'
 import Login from './pages/Login'
 import AuthGuard from './components/AuthGuard'
 
@@ -26,6 +29,10 @@ export default function App() {
             <Route path="/news" element={<News />} />
             <Route path="/checklist" element={<Checklist />} />
             <Route path="/journal" element={<Journal />} />
+            <Route path="/strategies" element={<Strategies />} />
+            <Route path="/strategies/new" element={<StrategyForm />} />
+            <Route path="/strategies/:id" element={<StrategyDetail />} />
+            <Route path="/strategies/:id/edit" element={<StrategyForm />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
