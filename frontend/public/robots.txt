@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://tradestat.ru/sitemap.xml
+Sitemap: https://tradestat.app/sitemap.xml
