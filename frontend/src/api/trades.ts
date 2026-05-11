@@ -25,6 +25,15 @@ export const updateTrade = (id: number, data: TradeUpdate) =>
 export const deleteTrade = (id: number) =>
   client.delete(`/trades/${id}`)
 
+export const importCsv = (file: File, balance = 100000) => {
+  const fd = new FormData()
+  fd.append('file', file)
+  fd.append('balance', String(balance))
+  return client.post<{ imported: number; skipped?: number }>('/trades/import-csv', fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then(r => r.data)
+}
+
 export const importHtml = (file: File, balance: number = 100000.0) => {
   const formData = new FormData()
   formData.append('file', file)

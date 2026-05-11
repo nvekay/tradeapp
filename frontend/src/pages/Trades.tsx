@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Download, FileText, Trash2, Pencil, Search, Upload } from 'lucide-react'
-import { getTrades, deleteTrade, importHtml, getExportUrl } from '../api/trades'
+import { getTrades, deleteTrade, importHtml, importCsv, getExportUrl } from '../api/trades'
 import type { Trade } from '../types'
 
 type SortField = 'date' | 'symbol' | 'pnl_pct' | 'rating' | 'rr'
@@ -157,10 +157,22 @@ export default function Trades() {
     }
   }
 
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    importHtml(file).then(() => getTrades(apiFilters).then(setTrades))
+    const isCsv = /\.csv$/i.test(file.name)
+    try {
+      const res = isCsv ? await importCsv(file) : await importHtml(file)
+      const trades = await getTrades(apiFilters)
+      setTrades(trades)
+      const skipped = (res as { skipped?: number }).skipped
+      alert(`Импортировано: ${res.imported}${skipped ? ` • Пропущено (дубликаты): ${skipped}` : ''}`)
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 'Ошибка импорта'
+      alert(msg)
+    } finally {
+      e.target.value = ''
+    }
   }
 
   const SortBtn = ({ field, label, className = '' }: { field: SortField; label: string; className?: string }) => (
@@ -178,8 +190,8 @@ export default function Trades() {
         </div>
         <div className="flex flex-wrap gap-2">
           <label className="px-3 py-2 bg-white border border-[#E2E8F0] text-[#0F172A] text-xs font-semibold rounded-lg hover:bg-gray-50 cursor-pointer transition-colors flex items-center gap-1.5" style={{ boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }}>
-            <Upload size={13} /> Import HTML
-            <input type="file" accept=".html,.htm" onChange={handleImport} className="hidden" />
+            <Upload size={13} /> Import
+            <input type="file" accept=".html,.htm,.csv" onChange={handleImport} className="hidden" />
           </label>
           <a href={getExportUrl(apiFilters)} download="trades_export.csv"
             className="px-3 py-2 bg-white border border-[#E2E8F0] text-[#0F172A] text-xs font-semibold rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5" style={{ boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }}>

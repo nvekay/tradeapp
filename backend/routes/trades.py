@@ -243,3 +243,184 @@ def import_html(
         
     db.commit()
     return {"imported": imported}
+
+@router.post("/import-csv", response_model=dict)
+def import_csv(
+    file: UploadFile = File(...),
+    balance: float = Form(100000.0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Import closed positions from broker CSV (Russian column headers)."""
+    raw = file.file.read()
+    # Try utf-8 first, then cp1251 (Windows Russian)
+    try:
+        content = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        try:
+            content = raw.decode("cp1251")
+        except UnicodeDecodeError:
+            content = raw.decode("utf-8", errors="ignore")
+
+    # Detect delimiter (CSV may use ; or ,)
+    sample = content[:2048]
+    delim = ";" if sample.count(";") > sample.count(",") else ","
+    reader = csv.reader(io.StringIO(content), delimiter=delim)
+
+    rows = list(reader)
+    if len(rows) < 2:
+        raise HTTPException(status_code=400, detail="Empty CSV")
+
+    header = [h.strip().lower() for h in rows[0]]
+
+    # Map Russian/English headers to indices
+    def find_col(*candidates):
+        for c in candidates:
+            for i, h in enumerate(header):
+                if c.lower() in h:
+                    return i
+        return -1
+
+    col_id      = find_col("id")
+    col_symbol  = find_col("символ", "symbol")
+    col_open_t  = find_col("время открытия", "open time", "open_time")
+    col_volume  = find_col("объём", "объем", "volume")
+    col_dir     = find_col("направление", "direction", "type")
+    col_close_t = find_col("время закрытия", "close time")
+    col_open_p  = find_col("цена открытия", "open price")
+    col_close_p = find_col("цена закрытия", "close price")
+    col_sl      = find_col("стоп-лосс", "stop loss", "s/l", "sl")
+    col_tp      = find_col("тейк-профит", "take profit", "t/p", "tp")
+    col_profit  = find_col("прибыль", "profit")
+    col_reason  = find_col("причина", "reason", "comment")
+
+    if col_symbol < 0 or col_open_t < 0 or col_dir < 0 or col_profit < 0:
+        raise HTTPException(status_code=400, detail="CSV missing required columns (Symbol, Open Time, Direction, Profit)")
+
+    # Pre-fetch existing imported trade IDs to skip duplicates
+    existing_notes = {
+        t.notes for t in db.query(Trade.notes).filter(Trade.user_id == current_user.id, Trade.notes.like("Imported ID:%")).all()
+    }
+
+    def parse_dt(s: str):
+        s = (s or "").strip()
+        for fmt in ("%d/%m/%Y %H:%M:%S", "%d.%m.%Y %H:%M:%S", "%Y-%m-%d %H:%M:%S",
+                    "%d/%m/%Y %H:%M", "%d.%m.%Y %H:%M"):
+            try:
+                return datetime.strptime(s, fmt)
+            except ValueError:
+                continue
+        return None
+
+    def parse_num(s: str):
+        if not s:
+            return None
+        try:
+            return float(s.replace(" ", "").replace(",", "."))
+        except ValueError:
+            return None
+
+    imported = 0
+    skipped = 0
+    for row in rows[1:]:
+        if not row or len(row) <= col_profit:
+            continue
+
+        # Skip total/summary row (first cell starts with "Всего" or "Total")
+        first = (row[0] if row else "").strip().lower()
+        if first in ("всего", "total", "итого", ""):
+            continue
+
+        tid = row[col_id].strip() if col_id >= 0 and col_id < len(row) else ""
+        note = f"Imported ID: {tid}" if tid else None
+        if note and note in existing_notes:
+            skipped += 1
+            continue
+
+        symbol = row[col_symbol].strip() if col_symbol < len(row) else ""
+        if not symbol:
+            continue
+
+        open_dt = parse_dt(row[col_open_t]) if col_open_t < len(row) else None
+        if not open_dt:
+            continue
+
+        profit = parse_num(row[col_profit]) if col_profit < len(row) else None
+        if profit is None:
+            continue
+
+        direction_str = (row[col_dir].strip().upper() if col_dir < len(row) else "")
+        open_price  = parse_num(row[col_open_p]) if col_open_p >= 0 and col_open_p < len(row) else None
+        close_price = parse_num(row[col_close_p]) if col_close_p >= 0 and col_close_p < len(row) else None
+        sl          = parse_num(row[col_sl]) if col_sl >= 0 and col_sl < len(row) else None
+        tp          = parse_num(row[col_tp]) if col_tp >= 0 and col_tp < len(row) else None
+        reason      = (row[col_reason].strip().lower() if col_reason >= 0 and col_reason < len(row) else "")
+
+        pnl_pct = (profit / balance) * 100
+
+        # Determine result from reason text first, fall back to profit sign
+        if "стоп" in reason or "stop" in reason or "[sl]" in reason or "s/l" in reason:
+            result = Result.stop
+        elif "тейк" in reason or "take" in reason or "[tp]" in reason or "t/p" in reason or "profit" in reason:
+            result = Result.take
+        elif profit > 0:
+            result = Result.take
+        elif profit < 0:
+            result = Result.stop
+        else:
+            result = Result.be
+
+        # Compute risk/rr from prices if available, else from profit
+        if open_price and sl and tp and direction_str in ("BUY", "SELL"):
+            if direction_str == "BUY":
+                risk_dist = max(open_price - sl, 1e-6)
+                reward_dist = max(tp - open_price, 1e-6)
+            else:
+                risk_dist = max(sl - open_price, 1e-6)
+                reward_dist = max(open_price - tp, 1e-6)
+            rr = round(reward_dist / risk_dist, 2)
+            risk = 1.0  # assume 1% — broker CSV doesn't carry account-relative risk
+        else:
+            if result == Result.take:
+                risk = 1.0
+                rr = max(pnl_pct, 0.01)
+            elif result == Result.stop:
+                risk = max(abs(pnl_pct), 0.01)
+                rr = 1.0
+            else:
+                risk = 1.0
+                rr = 1.0
+
+        direction = Direction.long if direction_str == "BUY" else Direction.short
+
+        hour = open_dt.hour
+        if 7 <= hour < 12:
+            session = SessionSchema.london
+        elif 12 <= hour < 16:
+            session = SessionSchema.overlap
+        elif 16 <= hour < 21:
+            session = SessionSchema.new_york
+        else:
+            session = SessionSchema.asian
+
+        trade = Trade(
+            user_id=current_user.id,
+            symbol=symbol,
+            direction=direction,
+            risk=round(risk, 2),
+            rr=round(rr, 2),
+            result=result,
+            pnl_pct=round(pnl_pct, 4),
+            date=open_dt,
+            session=session,
+            notes=note or "Imported from CSV",
+            rating=0,
+        )
+        db.add(trade)
+        if note:
+            existing_notes.add(note)
+        imported += 1
+
+    db.commit()
+    return {"imported": imported, "skipped": skipped}
+
