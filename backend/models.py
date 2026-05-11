@@ -12,6 +12,10 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=True)
     google_id = Column(String, unique=True, index=True, nullable=True)
+    account_size = Column(Float, nullable=False, default=10000)
+    currency = Column(String, nullable=False, default="USD")
+    daily_loss_limit = Column(Float, nullable=True)
+    onboarding_completed = Column(Boolean, nullable=False, default=False)
 
     trades = relationship("Trade", back_populates="user")
     factors = relationship("Factor", back_populates="user")

@@ -10,8 +10,10 @@ import Journal from './pages/Journal'
 import Strategies from './pages/Strategies'
 import StrategyForm from './pages/StrategyForm'
 import StrategyDetail from './pages/StrategyDetail'
+import Settings from './pages/Settings'
 import Login from './pages/Login'
 import AuthGuard from './components/AuthGuard'
+import { SettingsProvider } from './contexts/SettingsContext'
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '801267490977-sfl1k3m28p55299itgve1k821jscb2k3.apps.googleusercontent.com'
 
@@ -21,7 +23,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route element={<AuthGuard><Layout /></AuthGuard>}>
+          <Route element={<AuthGuard><SettingsProvider><Layout /></SettingsProvider></AuthGuard>}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/trades" element={<Trades />} />
             <Route path="/add" element={<AddTrade />} />
@@ -33,6 +35,7 @@ export default function App() {
             <Route path="/strategies/new" element={<StrategyForm />} />
             <Route path="/strategies/:id" element={<StrategyDetail />} />
             <Route path="/strategies/:id/edit" element={<StrategyForm />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

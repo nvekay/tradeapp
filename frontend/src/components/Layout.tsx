@@ -67,12 +67,16 @@ export default function Layout() {
             {({ isActive }) => <Brain size={20} color={isActive ? '#2563EB' : '#64748B'} strokeWidth={isActive ? 2.2 : 1.8} />}
           </NavLink>
 
-          <div style={{ width: '100%', height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 12, cursor: 'pointer', color: '#64748B', transition: 'all 0.15s' }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#F1F5F9' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+          <NavLink to="/settings"
+            style={({ isActive }) => ({
+              width: '100%', height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              borderRadius: 12, transition: 'all 0.15s', cursor: 'pointer',
+              color: isActive ? '#2563EB' : '#64748B',
+              background: isActive ? '#EFF6FF' : 'transparent',
+            })}
           >
-            <Settings size={20} strokeWidth={1.8} />
-          </div>
+            {({ isActive }) => <Settings size={20} color={isActive ? '#2563EB' : '#64748B'} strokeWidth={isActive ? 2.2 : 1.8} />}
+          </NavLink>
 
           <div onClick={handleLogout}
             style={{ width: '100%', height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 12, cursor: 'pointer', color: '#64748B', transition: 'all 0.15s', marginTop: 4 }}

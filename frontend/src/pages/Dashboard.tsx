@@ -6,6 +6,7 @@ import { getSummary, getPnlCurve, getByPsychology, getByFactor, getJournalCorrel
 import { getTrades } from '../api/trades'
 import { getJournalDates } from '../api/journal'
 import type { StatsSummary, PnlPoint, Trade, TagStat, FactorStat, MoodStat } from '../types'
+import { useSettings, fmtMoney } from '../contexts/SettingsContext'
 
 const COLORS = {
   primary: '#2563EB', success: '#059669', error: '#DC2626', warning: '#D97706',
@@ -172,6 +173,7 @@ function PnlCalendar({ trades, journalDates, onDayClick }: { trades: Trade[]; jo
 /* ─── MAIN ─────────────────────────────────────────────────────────────── */
 export default function Dashboard() {
   const navigate = useNavigate()
+  const { settings } = useSettings()
   const [period, setPeriod] = useState<Period>('all')
   const [offset, setOffset] = useState(0)
   const [summary, setSummary] = useState<StatsSummary | null>(null)
@@ -282,7 +284,7 @@ export default function Dashboard() {
       {/* Bento Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5 mb-5">
         <div className="lg:col-span-3"><KpiCard label="Net P&L" value={fmt(summary.total_pnl_pct)}
-          sub={`${summary.total_trades} trades`} subColor={summary.total_pnl_pct > 0 ? 'success' : 'error'}
+          sub={settings ? `${fmtMoney(summary.total_pnl_pct, settings.account_size, settings.currency)} • ${summary.total_trades} trades` : `${summary.total_trades} trades`} subColor={summary.total_pnl_pct > 0 ? 'success' : 'error'}
           icon={<TrendingUp size={16} />} iconBg="#ECFDF5" iconColor="#059669" /></div>
         <div className="lg:col-span-3"><KpiCard label="Win Rate" value={`${summary.winrate}%`}
           sub={`avg win ${fmt(summary.avg_win)} • loss ${fmt(summary.avg_loss)}`}
@@ -302,7 +304,10 @@ export default function Dashboard() {
               <h3 className="text-sm font-bold text-[#0F172A]">Cumulative Equity</h3>
               <p className="text-xs text-[#64748B] mt-0.5">Growth over selected period</p>
             </div>
-            <div className={`font-mono text-2xl font-bold ${summary.total_pnl_pct >= 0 ? 'text-[#059669]' : 'text-[#DC2626]'}`}>{fmt(summary.total_pnl_pct)}</div>
+            <div className="text-right">
+              <div className={`font-mono text-2xl font-bold ${summary.total_pnl_pct >= 0 ? 'text-[#059669]' : 'text-[#DC2626]'}`}>{fmt(summary.total_pnl_pct)}</div>
+              {settings && <div className={`font-mono text-xs font-medium ${summary.total_pnl_pct >= 0 ? 'text-[#059669]' : 'text-[#DC2626]'}`}>{fmtMoney(summary.total_pnl_pct, settings.account_size, settings.currency)}</div>}
+            </div>
           </div>
           <div className="flex-1" style={{ minHeight: 260 }}>
             <ResponsiveContainer width="100%" height="100%">

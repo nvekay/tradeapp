@@ -269,3 +269,20 @@ class UserSymbolOut(BaseModel):
     id: int
     name: str
     model_config = {"from_attributes": True}
+
+
+# --- User Settings ---
+
+class UserSettings(BaseModel):
+    account_size: float
+    currency: str
+    daily_loss_limit: Optional[float] = None
+    onboarding_completed: bool
+    model_config = {"from_attributes": True}
+
+
+class UserSettingsUpdate(BaseModel):
+    account_size: Optional[float] = None
+    currency: Optional[str] = None
+    daily_loss_limit: Optional[float] = None
+    onboarding_completed: Optional[bool] = None
