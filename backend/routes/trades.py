@@ -370,7 +370,10 @@ def import_csv(
         else:
             result = Result.be
 
-        # Compute risk/rr from prices if available, else from profit
+        # Self-consistent risk / rr derivation so risk*rr == |pnl_pct|.
+        # rr is the planned reward:risk from the broker's SL/TP prices when available;
+        # risk is back-solved from actual realised pnl_pct so the displayed numbers reconcile.
+        planned_rr = None
         if open_price and sl and tp and direction_str in ("BUY", "SELL"):
             if direction_str == "BUY":
                 risk_dist = max(open_price - sl, 1e-6)
@@ -378,18 +381,18 @@ def import_csv(
             else:
                 risk_dist = max(sl - open_price, 1e-6)
                 reward_dist = max(open_price - tp, 1e-6)
-            rr = round(reward_dist / risk_dist, 2)
-            risk = 1.0  # assume 1% — broker CSV doesn't carry account-relative risk
-        else:
-            if result == Result.take:
-                risk = 1.0
-                rr = max(pnl_pct, 0.01)
-            elif result == Result.stop:
-                risk = max(abs(pnl_pct), 0.01)
-                rr = 1.0
-            else:
-                risk = 1.0
-                rr = 1.0
+            planned_rr = reward_dist / risk_dist
+
+        if result == Result.stop:
+            risk = max(abs(pnl_pct), 0.01)
+            rr = round(planned_rr, 2) if planned_rr else 1.0
+        elif result == Result.take:
+            rr = round(planned_rr, 2) if planned_rr else max(pnl_pct, 0.01)
+            risk = round(abs(pnl_pct) / rr, 2) if rr else 1.0
+            risk = max(risk, 0.01)
+        else:  # b/e
+            risk = 1.0
+            rr = round(planned_rr, 2) if planned_rr else 1.0
 
         direction = Direction.long if direction_str == "BUY" else Direction.short
 
