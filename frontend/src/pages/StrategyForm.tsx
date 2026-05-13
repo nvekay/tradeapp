@@ -222,11 +222,11 @@ export default function StrategyForm() {
           <div className="grid grid-cols-2 gap-6">
             <div>
               <Label>Max risk per trade (%)</Label>
-              <input type="number" step="0.1" min="0.1" value={maxRiskPct} onChange={e => setMaxRiskPct(Number(e.target.value))} className={`${inputClass} font-mono`} />
+              <input type="number" step="0.01" min="0.01" value={maxRiskPct} onChange={e => setMaxRiskPct(Number(e.target.value))} className={`${inputClass} font-mono`} />
             </div>
             <div>
               <Label>Min RR</Label>
-              <input type="number" step="0.1" min="0.1" value={minRr} onChange={e => setMinRr(Number(e.target.value))} className={`${inputClass} font-mono`} />
+              <input type="number" step="0.01" min="0.01" value={minRr} onChange={e => setMinRr(Number(e.target.value))} className={`${inputClass} font-mono`} />
             </div>
           </div>
         </div>

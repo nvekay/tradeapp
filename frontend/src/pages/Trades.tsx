@@ -182,6 +182,16 @@ export default function Trades() {
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    if (/\.lnk$/i.test(file.name)) {
+      alert('Это Windows shortcut (.lnk), а не файл отчёта. Открой папку с реальным CSV/HTML и выбери сам файл, не ярлык из Recent.')
+      e.target.value = ''
+      return
+    }
+    if (!/\.(csv|html?|htm)$/i.test(file.name)) {
+      alert('Поддерживаются только CSV или HTML отчёты брокера.')
+      e.target.value = ''
+      return
+    }
     const isCsv = /\.csv$/i.test(file.name)
     try {
       const res = isCsv ? await importCsv(file) : await importHtml(file)
@@ -213,7 +223,7 @@ export default function Trades() {
         <div className="flex flex-wrap gap-2">
           <label className="px-3 py-2 bg-white border border-[#E2E8F0] text-[#0F172A] text-xs font-semibold rounded-lg hover:bg-gray-50 cursor-pointer transition-colors flex items-center gap-1.5" style={{ boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }}>
             <Upload size={13} /> Import
-            <input type="file" accept=".html,.htm,.csv" onChange={handleImport} className="hidden" />
+            <input type="file" accept=".html,.htm,.csv,text/html,text/csv" onChange={handleImport} className="hidden" />
           </label>
           <a href={getExportUrl(apiFilters)} download="trades_export.csv"
             className="px-3 py-2 bg-white border border-[#E2E8F0] text-[#0F172A] text-xs font-semibold rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5" style={{ boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }}>

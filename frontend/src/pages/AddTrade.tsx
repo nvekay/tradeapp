@@ -253,11 +253,11 @@ export default function AddTrade() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <Label>Risk %</Label>
-              <input type="number" step="0.1" min="0.1" required value={risk} onChange={e => setRisk(Number(e.target.value))} className={`${inputClass} font-mono`} />
+              <input type="number" step="0.01" min="0.01" required value={risk} onChange={e => setRisk(Number(e.target.value))} className={`${inputClass} font-mono`} />
             </div>
             <div>
               <Label>RR</Label>
-              <input type="number" step="0.1" min="0.1" required value={rr} onChange={e => setRr(Number(e.target.value))} className={`${inputClass} font-mono`} />
+              <input type="number" step="0.01" min="0.01" required value={rr} onChange={e => setRr(Number(e.target.value))} className={`${inputClass} font-mono`} />
             </div>
             <div>
               <Label>PnL Preview</Label>

@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Optional
 import csv
 import io
+from pathlib import Path
 from fastapi.responses import StreamingResponse
 from bs4 import BeautifulSoup
 
@@ -15,6 +16,17 @@ from auth import get_current_user
 from models import User
 
 router = APIRouter(prefix="/trades", tags=["trades"])
+
+def _reject_unsupported_import(file: UploadFile, expected: str):
+    filename = (file.filename or "").lower()
+    suffix = Path(filename).suffix
+    if suffix == ".lnk":
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot import Windows shortcut (.lnk). Upload the real CSV/HTML report file, not a shortcut from Recent.",
+        )
+    if suffix and suffix not in expected.split("|"):
+        raise HTTPException(status_code=400, detail=f"Unsupported import file type: {suffix}. Upload {expected.replace('|', ' or ')}.")
 
 def _get_or_404(db: Session, trade_id: int, current_user: User) -> Trade:
     trade = db.query(Trade).filter(Trade.id == trade_id, Trade.user_id == current_user.id).first()
@@ -169,6 +181,7 @@ def import_html(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    _reject_unsupported_import(file, ".html|.htm")
     content = file.file.read().decode("utf-8", errors="ignore")
     soup = BeautifulSoup(content, "html.parser")
     tables = soup.find_all("table")
@@ -260,6 +273,7 @@ def import_csv(
     db: Session = Depends(get_db)
 ):
     """Import closed positions from broker CSV (Russian column headers)."""
+    _reject_unsupported_import(file, ".csv")
     raw = file.file.read()
     # Try utf-8 first, then cp1251 (Windows Russian)
     try:
