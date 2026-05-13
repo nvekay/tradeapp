@@ -82,7 +82,7 @@ function FeedItem({ t, onClick }: { t: Trade; onClick: () => void }) {
       <div className="flex-1 min-w-0">
         <div className="flex justify-between items-baseline mb-0.5">
           <span className="font-bold text-sm text-[#0F172A] truncate">{t.symbol}</span>
-          <span className={`font-mono text-sm font-bold ${pnlClass}`}>{t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}</span>
+          <span className={`font-mono text-sm font-bold ${pnlClass}`}>{t.result === 'open' ? 'OPEN' : t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}</span>
         </div>
         <div className="flex justify-between items-baseline">
           <span className="text-xs text-[#64748B] truncate">{tags}</span>
@@ -266,7 +266,10 @@ export default function Dashboard() {
     asian:    { name: 'Asian',    trades: 0, wins: 0, color: COLORS.error },
     overlap:  { name: 'L/NY Overlap', trades: 0, wins: 0, color: COLORS.primary },
   }
-  for (const t of allTrades) { if (sessionData[t.session]) { sessionData[t.session].trades++; if (t.pnl_pct > 0) sessionData[t.session].wins++ } }
+  for (const t of allTrades) {
+    if (t.result === 'open') continue
+    if (sessionData[t.session]) { sessionData[t.session].trades++; if (t.pnl_pct > 0) sessionData[t.session].wins++ }
+  }
 
   // Top tags by PnL
   const tagWithPnl = psychStats.map(p => ({

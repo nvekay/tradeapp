@@ -13,6 +13,7 @@ class Result(str, Enum):
     take = "take"
     stop = "stop"
     be = "b/e"
+    open = "open"
 
 
 class Session(str, Enum):
@@ -144,7 +145,9 @@ class TradeUpdate(BaseModel):
 
     @model_validator(mode="after")
     def recalc_pnl(self) -> "TradeUpdate":
-        if self.result is not None and self.risk is not None and self.rr is not None:
+        if self.result == Result.open:
+            self.pnl_pct = 0.0
+        elif self.result is not None and self.risk is not None and self.rr is not None:
             if self.result == Result.take:
                 self.pnl_pct = round(self.risk * self.rr, 4)
             elif self.result == Result.stop:

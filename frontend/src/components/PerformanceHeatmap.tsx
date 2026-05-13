@@ -18,6 +18,7 @@ export default function PerformanceHeatmap({ trades }: Props) {
   const matrix = useMemo(() => {
     const data = Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => ({ wins: 0, total: 0 })))
     for (const t of trades) {
+      if (t.result === 'open') continue
       const d = new Date(t.date + 'Z')
       const day = (d.getDay() + 6) % 7
       const hour = d.getHours()

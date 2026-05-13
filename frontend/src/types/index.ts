@@ -1,5 +1,5 @@
 export type Direction = 'long' | 'short'
-export type TradeResult = 'take' | 'stop' | 'b/e'
+export type TradeResult = 'take' | 'stop' | 'b/e' | 'open'
 export type Session = 'london' | 'new_york' | 'asian' | 'overlap'
 export type TradeType = 'trend' | 'countertrend'
 

@@ -149,7 +149,7 @@ export default function StrategyDetail() {
                     </div>
                   </div>
                   <div className="font-mono text-sm font-bold" style={{ color: c }}>
-                    {t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}
+                    {t.result === 'open' ? 'OPEN' : t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}
                   </div>
                 </div>
               )

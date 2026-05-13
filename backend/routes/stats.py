@@ -11,7 +11,7 @@ router = APIRouter(prefix="/stats", tags=["stats"])
 
 
 def _trades(db: Session, from_date: Optional[str], to_date: Optional[str], current_user: User) -> list[Trade]:
-    q = db.query(Trade).filter(Trade.user_id == current_user.id).order_by(Trade.date.asc())
+    q = db.query(Trade).filter(Trade.user_id == current_user.id, Trade.result != "open").order_by(Trade.date.asc())
     if from_date:
         q = q.filter(Trade.date >= datetime.fromisoformat(from_date.replace('Z', '')))
     if to_date:

@@ -231,6 +231,7 @@ export default function AddTrade() {
             <div>
               <Label>Result</Label>
               <Segmented value={result} onChange={setResult} opts={[
+                { v: 'open' as TradeResult, label: 'Open', activeBg: '#EFF6FF', activeColor: '#2563EB' },
                 { v: 'take' as TradeResult, label: 'Take', activeBg: '#F0FDF4', activeColor: '#059669' },
                 { v: 'stop' as TradeResult, label: 'Stop', activeBg: '#FEF2F2', activeColor: '#DC2626' },
                 { v: 'b/e' as TradeResult, label: 'B/E', activeBg: '#FFFBEB', activeColor: '#D97706' },
@@ -262,7 +263,7 @@ export default function AddTrade() {
               <Label>PnL Preview</Label>
               <div className="w-full h-10 px-3 rounded-lg text-lg font-bold flex items-center font-mono border"
                 style={{ background: pnlBg, color: pnlColor, borderColor: pnlBorder }}>
-                {pnlPreview > 0 ? '+' : ''}{pnlPreview}%
+                {result === 'open' ? 'OPEN' : `${pnlPreview > 0 ? '+' : ''}${pnlPreview}%`}
               </div>
             </div>
           </div>

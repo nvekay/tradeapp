@@ -48,7 +48,7 @@ class Trade(Base):
     direction = Column(String, nullable=False)       # "long" | "short"
     risk = Column(Float, nullable=False, default=1.0)
     rr = Column(Float, nullable=False)
-    result = Column(String, nullable=False)          # "take" | "stop" | "b/e"
+    result = Column(String, nullable=False)          # "take" | "stop" | "b/e" | "open"
     pnl_pct = Column(Float, nullable=False)
     date = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     session = Column(String, nullable=False)         # "london" | "new_york" | "asian" | "overlap"

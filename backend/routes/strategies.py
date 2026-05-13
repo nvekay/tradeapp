@@ -11,7 +11,7 @@ router = APIRouter(prefix="/strategies", tags=["strategies"])
 
 
 def _enrich_stats(strategy: Strategy, db: Session):
-    trades = db.query(Trade).filter(Trade.strategy_id == strategy.id).all()
+    trades = db.query(Trade).filter(Trade.strategy_id == strategy.id, Trade.result != "open").all()
     total = len(trades)
     wins = sum(1 for t in trades if t.pnl_pct > 0)
     total_pnl = sum(t.pnl_pct for t in trades)

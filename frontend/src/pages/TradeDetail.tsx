@@ -9,6 +9,11 @@ import type { Screenshot, Strategy, Trade } from '../types'
 
 function fmtPct(v: number) { return `${v > 0 ? '+' : ''}${v.toFixed(2)}%` }
 function pnlClass(v: number) { return v > 0 ? 'text-[#059669]' : v < 0 ? 'text-[#DC2626]' : 'text-[#64748B]' }
+function resultLabel(result: string) {
+  if (result === 'b/e') return 'Break even'
+  if (result === 'open') return 'Open'
+  return result
+}
 function tradeDay(raw: string) {
   const d = new Date(raw + 'Z')
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
@@ -73,7 +78,7 @@ export default function TradeDetail() {
   }
 
   const dt = new Date(trade.date + 'Z')
-  const pnl = trade.result === 'b/e' ? 0 : trade.pnl_pct
+  const pnl = trade.result === 'b/e' || trade.result === 'open' ? 0 : trade.pnl_pct
 
   return (
     <div>
@@ -102,12 +107,12 @@ export default function TradeDetail() {
           <div className="rounded-2xl border border-[#F1F5F9] bg-white p-5 shadow-sm">
             <div className="grid gap-4 sm:grid-cols-4">
               <div><div className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">Direction</div><div className="mt-1 text-lg font-bold capitalize">{trade.direction}</div></div>
-              <div><div className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">Result</div><div className="mt-1 text-lg font-bold capitalize">{trade.result === 'b/e' ? 'Break even' : trade.result}</div></div>
+              <div><div className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">Result</div><div className="mt-1 text-lg font-bold capitalize">{resultLabel(trade.result)}</div></div>
               <div><div className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">Risk / RR</div><div className="mt-1 font-mono text-lg font-bold">{trade.risk}% / 1:{trade.rr}</div></div>
               <div>
                 <div className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">P&L</div>
-                <div className={`mt-1 font-mono text-2xl font-bold ${pnlClass(pnl)}`}>{fmtPct(pnl)}</div>
-                {settings && <div className={`font-mono text-xs font-semibold ${pnlClass(pnl)}`}>{fmtMoney(pnl, settings.account_size, settings.currency)}</div>}
+                <div className={`mt-1 font-mono text-2xl font-bold ${pnlClass(pnl)}`}>{trade.result === 'open' ? 'OPEN' : fmtPct(pnl)}</div>
+                {settings && trade.result !== 'open' && <div className={`font-mono text-xs font-semibold ${pnlClass(pnl)}`}>{fmtMoney(pnl, settings.account_size, settings.currency)}</div>}
               </div>
             </div>
           </div>

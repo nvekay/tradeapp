@@ -14,6 +14,15 @@ interface Filters {
 }
 
 const fmt = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(2)}%`
+const resultLabel = (result: string) =>
+  result === 'take' ? 'Take Profit' : result === 'stop' ? 'Stop Loss' : result === 'open' ? 'Open' : 'Break Even'
+const resultShort = (result: string) =>
+  result === 'take' ? 'Take' : result === 'stop' ? 'Stop' : result === 'open' ? 'Open' : 'B/E'
+const resultBadgeClass = (result: string) =>
+  result === 'take' ? 'bg-green-50 border-green-100 text-[#059669]'
+    : result === 'stop' ? 'bg-red-50 border-red-100 text-[#DC2626]'
+    : result === 'open' ? 'bg-blue-50 border-blue-100 text-[#2563EB]'
+    : 'bg-amber-50 border-amber-100 text-[#D97706]'
 
 /* ─── PDF export (browser print) ──────────────────────────────────────── */
 function exportPdf(trades: Trade[], filters: Filters) {
@@ -74,9 +83,9 @@ function exportPdf(trades: Trade[], filters: Filters) {
   ${trades.map(t => `<tr>
     <td>${fmtDate(t.date)}</td><td class="mono">${t.symbol}</td>
     <td>${t.direction === 'long' ? '▲ Long' : '▼ Short'}</td>
-    <td>${t.result === 'take' ? 'Take' : t.result === 'stop' ? 'Stop' : 'B/E'}</td>
+    <td>${resultShort(t.result)}</td>
     <td class="mono">${t.risk}%</td><td class="mono">1:${t.rr}</td>
-    <td class="mono ${t.pnl_pct > 0 ? 'pos' : t.pnl_pct < 0 ? 'neg' : 'neu'}">${t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}</td>
+    <td class="mono ${t.pnl_pct > 0 ? 'pos' : t.pnl_pct < 0 ? 'neg' : 'neu'}">${t.result === 'open' ? 'OPEN' : t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}</td>
     <td>${hearts(t.rating)}</td>
     <td>${t.session.replace('_', ' ')}</td>
     <td>${t.psychology.join(', ') || '—'}</td>
@@ -236,7 +245,7 @@ export default function Trades() {
 
           <select value={filters.result} onChange={e => setFilters(f => ({ ...f, result: e.target.value }))}
             className="h-9 pl-3 pr-8 bg-white border border-[#E2E8F0] rounded-lg text-xs font-medium text-[#0F172A] focus:outline-none cursor-pointer">
-            <option value="">All Results</option><option value="take">Take</option><option value="stop">Stop</option><option value="b/e">B/E</option>
+            <option value="">All Results</option><option value="open">Open</option><option value="take">Take</option><option value="stop">Stop</option><option value="b/e">B/E</option>
           </select>
 
           <select value={filters.rating} onChange={e => setFilters(f => ({ ...f, rating: e.target.value }))}
@@ -280,9 +289,7 @@ export default function Trades() {
               const isWin = t.pnl_pct > 0
               const isLoss = t.pnl_pct < 0
               const pnlClass = isWin ? 'text-[#059669]' : isLoss ? 'text-[#DC2626]' : 'text-[#64748B]'
-              const resultClass = t.result === 'take' ? 'bg-green-50 border-green-100 text-[#059669]'
-                : t.result === 'stop' ? 'bg-red-50 border-red-100 text-[#DC2626]'
-                : 'bg-amber-50 border-amber-100 text-[#D97706]'
+              const resultClass = resultBadgeClass(t.result)
               return (
                 <div key={t.id} onClick={() => navigate(`/trade/${t.id}`)}
                   className="rounded-2xl border border-[#F1F5F9] bg-white p-4 shadow-sm">
@@ -294,14 +301,14 @@ export default function Trades() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className={`font-mono text-lg font-bold ${pnlClass}`}>{t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}</div>
-                      {settings && t.result !== 'b/e' && <div className={`font-mono text-xs ${pnlClass}`}>{fmtMoney(t.pnl_pct, settings.account_size, settings.currency)}</div>}
+                      <div className={`font-mono text-lg font-bold ${pnlClass}`}>{t.result === 'open' ? 'OPEN' : t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}</div>
+                      {settings && t.result !== 'b/e' && t.result !== 'open' && <div className={`font-mono text-xs ${pnlClass}`}>{fmtMoney(t.pnl_pct, settings.account_size, settings.currency)}</div>}
                     </div>
                   </div>
                   <div className="mb-3 flex flex-wrap gap-2">
                     <span className="rounded-lg bg-gray-100 px-2 py-1 text-[11px] font-bold capitalize text-gray-700">{t.direction}</span>
                     <span className="rounded-lg bg-gray-100 px-2 py-1 text-[11px] font-bold capitalize text-gray-700">{t.session.replace('_', ' ')}</span>
-                    <span className={`rounded-lg border px-2 py-1 text-[11px] font-bold ${resultClass}`}>{t.result === 'b/e' ? 'B/E' : t.result}</span>
+                    <span className={`rounded-lg border px-2 py-1 text-[11px] font-bold ${resultClass}`}>{resultShort(t.result)}</span>
                     <span className="rounded-lg bg-gray-100 px-2 py-1 text-[11px] font-bold text-gray-700">{t.risk}% risk / 1:{t.rr}</span>
                   </div>
                   <div className="flex items-center justify-between border-t border-[#F1F5F9] pt-3">
@@ -332,10 +339,8 @@ export default function Trades() {
                   const typeText = !t.trade_type ? '—' : t.trade_type === 'trend' ? 'Trend' : 'Counter'
                   const isWin = t.pnl_pct > 0
                   const isLoss = t.pnl_pct < 0
-                  const resultClass = t.result === 'take' ? 'bg-green-50 border-green-100 text-[#059669]'
-                    : t.result === 'stop' ? 'bg-red-50 border-red-100 text-[#DC2626]'
-                    : 'bg-amber-50 border-amber-100 text-[#D97706]'
-                  const resultText = t.result === 'take' ? 'Take Profit' : t.result === 'stop' ? 'Stop Loss' : 'Break Even'
+                  const resultClass = resultBadgeClass(t.result)
+                  const resultText = resultLabel(t.result)
                   const pnlClass = isWin ? 'text-[#059669]' : isLoss ? 'text-[#DC2626]' : 'text-[#64748B]'
                   return (
                     <tr key={t.id} onClick={() => navigate(`/trade/${t.id}`)}
@@ -382,8 +387,8 @@ export default function Trades() {
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         <div className="flex flex-col items-end gap-1">
-                          <div className={`font-mono text-lg font-bold ${pnlClass}`}>{t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}</div>
-                          {settings && t.result !== 'b/e' && <div className={`font-mono text-[10px] ${pnlClass}`}>{fmtMoney(t.pnl_pct, settings.account_size, settings.currency)}</div>}
+                          <div className={`font-mono text-lg font-bold ${pnlClass}`}>{t.result === 'open' ? 'OPEN' : t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}</div>
+                          {settings && t.result !== 'b/e' && t.result !== 'open' && <div className={`font-mono text-[10px] ${pnlClass}`}>{fmtMoney(t.pnl_pct, settings.account_size, settings.currency)}</div>}
                           <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest border ${resultClass}`}>{resultText}</span>
                         </div>
                       </td>
