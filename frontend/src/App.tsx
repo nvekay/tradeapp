@@ -7,6 +7,7 @@ import AddTrade from './pages/AddTrade'
 import News from './pages/News'
 import Checklist from './pages/Checklist'
 import Journal from './pages/Journal'
+import Calendar from './pages/Calendar'
 import Strategies from './pages/Strategies'
 import StrategyForm from './pages/StrategyForm'
 import StrategyDetail from './pages/StrategyDetail'
@@ -38,6 +39,7 @@ export default function App() {
             <Route path="/edit/:id" element={<AddTrade />} />
             <Route path="/news" element={<News />} />
             <Route path="/checklist" element={<Checklist />} />
+            <Route path="/calendar" element={<Calendar />} />
             <Route path="/journal" element={<Journal />} />
             <Route path="/strategies" element={<Strategies />} />
             <Route path="/strategies/new" element={<StrategyForm />} />

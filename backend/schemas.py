@@ -189,6 +189,25 @@ class DailyJournalOut(DailyJournalBase):
     model_config = {"from_attributes": True}
 
 
+# --- Weekly Plan ---
+
+class WeeklyPlanBase(BaseModel):
+    week_start: str
+    focus: Optional[str] = None
+    watchlist: Optional[str] = None
+    risk_plan: Optional[str] = None
+    notes: Optional[str] = None
+
+class WeeklyPlanUpsert(WeeklyPlanBase):
+    pass
+
+class WeeklyPlanOut(WeeklyPlanBase):
+    id: int
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 # --- Strategy ---
 
 class StrategyStatus(str, Enum):

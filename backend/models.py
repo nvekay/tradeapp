@@ -20,6 +20,7 @@ class User(Base):
     trades = relationship("Trade", back_populates="user")
     factors = relationship("Factor", back_populates="user")
     journals = relationship("DailyJournal", back_populates="user")
+    weekly_plans = relationship("WeeklyPlan", back_populates="user")
 
 
 class Factor(Base):
@@ -80,6 +81,21 @@ class DailyJournal(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
 
     user = relationship("User", back_populates="journals")
+
+
+class WeeklyPlan(Base):
+    __tablename__ = "weekly_plans"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    week_start = Column(String, nullable=False) # Monday, format YYYY-MM-DD
+    focus = Column(Text, nullable=True)
+    watchlist = Column(Text, nullable=True)
+    risk_plan = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", back_populates="weekly_plans")
 
 
 class Strategy(Base):

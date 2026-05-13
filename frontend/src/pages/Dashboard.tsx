@@ -1,10 +1,9 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, ReferenceLine } from 'recharts'
 import { TrendingUp, TrendingDown, Zap, Sparkles, Plus } from 'lucide-react'
 import { getSummary, getPnlCurve, getByPsychology, getByFactor, getJournalCorrelation } from '../api/stats'
 import { getTrades } from '../api/trades'
-import { getJournalDates } from '../api/journal'
 import type { StatsSummary, PnlPoint, Trade, TagStat, FactorStat, MoodStat } from '../types'
 import { useSettings, fmtMoney } from '../contexts/SettingsContext'
 import DailyLossBanner from '../components/DailyLossBanner'
@@ -105,74 +104,6 @@ function ChartTip({ active, payload }: { active?: boolean; payload?: { payload: 
   )
 }
 
-/* ─── PnL Calendar ──────────────────────────────────────────────────── */
-function PnlCalendar({ trades, journalDates, onDayClick }: { trades: Trade[]; journalDates: Set<string>; onDayClick: (date: string) => void }) {
-  const [currentDate, setCurrentDate] = useState(() => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d })
-  const byDate = useMemo(() => {
-    const map: Record<string, { pnl: number, count: number }> = {}
-    for (const t of trades) {
-      const d = new Date(t.date + 'Z')
-      const ds = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0')
-      if (!map[ds]) map[ds] = { pnl: 0, count: 0 }
-      map[ds].pnl += t.pnl_pct; map[ds].count += 1
-    }
-    return map
-  }, [trades])
-  const year = currentDate.getFullYear(), month = currentDate.getMonth()
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const firstDay = new Date(year, month, 1).getDay()
-  const startDay = firstDay === 0 ? 6 : firstDay - 1
-  const cells: (Date | null)[] = Array(startDay).fill(null)
-  for (let i = 1; i <= daysInMonth; i++) cells.push(new Date(year, month, i))
-  while (cells.length % 7) cells.push(null)
-  const monthLabel = currentDate.toLocaleDateString('en', { month: 'long', year: 'numeric' })
-  const nav = (delta: number) => { const n = new Date(currentDate); n.setMonth(n.getMonth() + delta); setCurrentDate(n) }
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <button onClick={() => nav(-1)} className="w-8 h-8 rounded-md hover:bg-gray-100 flex items-center justify-center text-[#64748B] font-bold transition-colors">‹</button>
-        <span className="text-base font-bold text-[#0F172A]">{monthLabel}</span>
-        <button onClick={() => nav(1)} className="w-8 h-8 rounded-md hover:bg-gray-100 flex items-center justify-center text-[#64748B] font-bold transition-colors">›</button>
-      </div>
-      <div className="grid grid-cols-7 gap-2 mb-2">
-        {['Mo','Tu','We','Th','Fr','Sa','Su'].map(d => <div key={d} className="text-center text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider">{d}</div>)}
-      </div>
-      <div className="grid grid-cols-7 gap-2">
-        {cells.map((date, idx) => {
-          if (!date) return <div key={`e-${idx}`} className="min-h-[78px] rounded-xl border border-dashed border-[#F1F5F9]" />
-          const ds = date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2,'0') + '-' + String(date.getDate()).padStart(2,'0')
-          const stat = byDate[ds]
-          const hasJournal = journalDates.has(ds)
-          let cardClass = 'bg-white border-[#F1F5F9]'
-          let textClass = 'text-[#94A3B8]'
-          let pnlClass = 'text-[#94A3B8]'
-          if (stat) {
-            if (stat.pnl > 0) { cardClass = 'bg-green-50/60 border-green-100'; textClass = 'text-[#059669]'; pnlClass = 'text-[#059669]' }
-            else if (stat.pnl < 0) { cardClass = 'bg-red-50/60 border-red-100'; textClass = 'text-[#DC2626]'; pnlClass = 'text-[#DC2626]' }
-            else { cardClass = 'bg-amber-50/60 border-amber-100'; textClass = 'text-[#D97706]'; pnlClass = 'text-[#D97706]' }
-          }
-          return (
-            <div key={ds} onClick={() => onDayClick(ds)}
-              className={`min-h-[78px] rounded-xl border p-2 flex flex-col cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md ${cardClass}`}>
-              <div className="flex justify-between items-start">
-                {hasJournal ? <div className="w-1.5 h-1.5 rounded-full mt-1 shrink-0" style={{ background: COLORS.primary }} /> : <div className="w-1.5" />}
-                <div className={`text-xs font-semibold ${textClass}`}>{date.getDate()}</div>
-              </div>
-              {stat && (
-                <div className="flex-1 flex flex-col items-center justify-center mt-1">
-                  <div className={`font-mono text-sm font-bold ${pnlClass}`}>{fmt(stat.pnl)}</div>
-                  <div className={`text-[10px] opacity-80 mt-0.5 ${pnlClass}`}>{stat.count} {stat.count === 1 ? 'trade' : 'trades'}</div>
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-/* ─── MAIN ─────────────────────────────────────────────────────────────── */
 export default function Dashboard() {
   const navigate = useNavigate()
   const { settings } = useSettings()
@@ -184,7 +115,6 @@ export default function Dashboard() {
   const [psychStats, setPsychStats] = useState<TagStat[]>([])
   const [factorStats, setFactorStats] = useState<FactorStat[]>([])
   const [moodStats, setMoodStats] = useState<MoodStat[]>([])
-  const [journalDates, setJournalDates] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
 
   const range = getRange(period, offset)
@@ -196,11 +126,9 @@ export default function Dashboard() {
       getSummary(r), getPnlCurve(r),
       getTrades(r ? { from: range.from, to: range.to } : undefined),
       getByPsychology(r), getByFactor(r), getJournalCorrelation(r),
-      getJournalDates(),
-    ]).then(([s, c, t, ps, fs, ms, jd]) => {
+    ]).then(([s, c, t, ps, fs, ms]) => {
       setSummary(s); setCurve(c)
       setAllTrades(t); setPsychStats(ps); setFactorStats(fs); setMoodStats(ms)
-      setJournalDates(new Set(jd))
     }).finally(() => setLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period, offset])
@@ -434,17 +362,6 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-      </div>
-
-      {/* Calendar */}
-      <div className="bg-white p-6 rounded-2xl border border-[#F1F5F9]" style={{ boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }}>
-        <div className="flex justify-between items-center mb-5">
-          <h3 className="text-sm font-bold text-[#0F172A]">P&L Calendar</h3>
-          <span className="text-xs text-[#94A3B8] flex items-center gap-1.5">
-            <span className="inline-block w-2 h-2 rounded-full bg-[#2563EB]" /> есть запись в дневнике
-          </span>
-        </div>
-        <PnlCalendar trades={allTrades} journalDates={journalDates} onDayClick={d => navigate(`/journal?date=${d}`)} />
       </div>
 
       <div className="mt-5">

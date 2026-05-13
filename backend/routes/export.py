@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
 from database import get_db
-from models import User, Trade, Factor, Strategy, DailyJournal, PsychologyTag, UserSymbol
+from models import User, Trade, Factor, Strategy, DailyJournal, WeeklyPlan, PsychologyTag, UserSymbol
 from auth import get_current_user
 
 router = APIRouter(prefix="/export", tags=["export"])
@@ -46,6 +46,7 @@ def export_all(current_user: User = Depends(get_current_user), db: Session = Dep
     strategies = db.query(Strategy).filter(Strategy.user_id == current_user.id).all()
     factors = db.query(Factor).filter(Factor.user_id == current_user.id).all()
     journal = db.query(DailyJournal).filter(DailyJournal.user_id == current_user.id).all()
+    weekly_plans = db.query(WeeklyPlan).filter(WeeklyPlan.user_id == current_user.id).all()
     psy = db.query(PsychologyTag).filter(PsychologyTag.user_id == current_user.id).all()
     syms = db.query(UserSymbol).filter(UserSymbol.user_id == current_user.id).all()
 
@@ -56,6 +57,7 @@ def export_all(current_user: User = Depends(get_current_user), db: Session = Dep
         "strategies": [_strategy_dict(s) for s in strategies],
         "factors": [{"id": f.id, "name": f.name} for f in factors],
         "journal": [{"date": j.date, "pre_mood": j.pre_mood, "pre_plan": j.pre_plan, "post_mood": j.post_mood, "post_learned": j.post_learned} for j in journal],
+        "weekly_plans": [{"week_start": w.week_start, "focus": w.focus, "watchlist": w.watchlist, "risk_plan": w.risk_plan, "notes": w.notes} for w in weekly_plans],
         "psychology_tags": [{"id": p.id, "name": p.name} for p in psy],
         "symbols": [{"id": s.id, "name": s.name} for s in syms],
     }
