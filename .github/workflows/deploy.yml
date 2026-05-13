@@ -23,5 +23,5 @@ jobs:
           git clean -fd
           git pull origin main
 
-          COMPOSE_PROJECT_NAME=tradestat /usr/bin/docker compose up -d --build --remove-orphans
+          COMPOSE_PROJECT_NAME=tradestat /usr/bin/docker compose up -d --build --force-recreate --remove-orphans
           /usr/bin/docker image prune -f
