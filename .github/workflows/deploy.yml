@@ -19,13 +19,9 @@ jobs:
           export PATH=$PATH:/usr/bin:/usr/local/bin
           cd /var/www/tradestat
 
-          # Remove ALL containers (running + stopped) matching our names
-          docker ps -a -q --filter name=tradestat | xargs -r docker rm -f 2>/dev/null || true
-          docker ps -a -q --filter name=backend   | xargs -r docker rm -f 2>/dev/null || true
-          docker ps -a -q --filter name=frontend  | xargs -r docker rm -f 2>/dev/null || true
-
           git reset --hard
           git clean -fd
           git pull origin main
 
-          COMPOSE_PROJECT_NAME=tradestat /usr/bin/docker compose up -d --build
+          COMPOSE_PROJECT_NAME=tradestat /usr/bin/docker compose up -d --build --remove-orphans
+          /usr/bin/docker image prune -f
