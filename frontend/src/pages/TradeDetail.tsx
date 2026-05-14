@@ -6,6 +6,7 @@ import { getJournal, type DailyJournal } from '../api/journal'
 import { getStrategy } from '../api/strategies'
 import { fmtMoney, useSettings } from '../contexts/SettingsContext'
 import type { Screenshot, Strategy, Trade } from '../types'
+import OpenPendingBadge from '../components/OpenPendingBadge'
 
 function fmtPct(v: number) { return `${v > 0 ? '+' : ''}${v.toFixed(2)}%` }
 function pnlClass(v: number) { return v > 0 ? 'text-[#059669]' : v < 0 ? 'text-[#DC2626]' : 'text-[#64748B]' }
@@ -111,7 +112,7 @@ export default function TradeDetail() {
               <div><div className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">Risk / RR</div><div className="mt-1 font-mono text-lg font-bold">{trade.risk}% / 1:{trade.rr}</div></div>
               <div>
                 <div className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">P&L</div>
-                <div className={`mt-1 font-mono text-2xl font-bold ${pnlClass(pnl)}`}>{trade.result === 'open' ? 'OPEN' : fmtPct(pnl)}</div>
+                <div className={`mt-1 font-mono text-2xl font-bold ${pnlClass(pnl)}`}>{trade.result === 'open' ? <OpenPendingBadge size="lg" /> : fmtPct(pnl)}</div>
                 {settings && trade.result !== 'open' && <div className={`font-mono text-xs font-semibold ${pnlClass(pnl)}`}>{fmtMoney(pnl, settings.account_size, settings.currency)}</div>}
               </div>
             </div>

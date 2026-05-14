@@ -9,6 +9,7 @@ import HeartPicker from '../components/HeartPicker'
 import TagSearchSelect from '../components/TagSearchSelect'
 import SymbolSelect from '../components/SymbolSelect'
 import ScreenshotsField from '../components/ScreenshotsField'
+import OpenPendingBadge from '../components/OpenPendingBadge'
 import { getFactors, createFactor } from '../api/factors'
 import { getPsychologyTags, createPsychologyTag } from '../api/psychology'
 import { getSymbols, createSymbol } from '../api/symbols'
@@ -263,7 +264,7 @@ export default function AddTrade() {
               <Label>PnL Preview</Label>
               <div className="w-full h-10 px-3 rounded-lg text-lg font-bold flex items-center font-mono border"
                 style={{ background: pnlBg, color: pnlColor, borderColor: pnlBorder }}>
-                {result === 'open' ? 'OPEN' : `${pnlPreview > 0 ? '+' : ''}${pnlPreview}%`}
+                {result === 'open' ? <OpenPendingBadge /> : `${pnlPreview > 0 ? '+' : ''}${pnlPreview}%`}
               </div>
             </div>
           </div>

@@ -4,6 +4,7 @@ import { Plus, Download, FileText, Trash2, Pencil, Search, Upload } from 'lucide
 import { getTrades, deleteTrade, importHtml, importCsv, getExportUrl } from '../api/trades'
 import { useSettings, fmtMoney } from '../contexts/SettingsContext'
 import type { Trade } from '../types'
+import OpenPendingBadge from '../components/OpenPendingBadge'
 
 type SortField = 'date' | 'symbol' | 'pnl_pct' | 'rating' | 'rr'
 type SortDir = 'asc' | 'desc'
@@ -311,7 +312,7 @@ export default function Trades() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className={`font-mono text-lg font-bold ${pnlClass}`}>{t.result === 'open' ? 'OPEN' : t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}</div>
+                      <div className={`font-mono text-lg font-bold ${pnlClass}`}>{t.result === 'open' ? <OpenPendingBadge /> : t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}</div>
                       {settings && t.result !== 'b/e' && t.result !== 'open' && <div className={`font-mono text-xs ${pnlClass}`}>{fmtMoney(t.pnl_pct, settings.account_size, settings.currency)}</div>}
                     </div>
                   </div>
@@ -397,7 +398,7 @@ export default function Trades() {
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         <div className="flex flex-col items-end gap-1">
-                          <div className={`font-mono text-lg font-bold ${pnlClass}`}>{t.result === 'open' ? 'OPEN' : t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}</div>
+                          <div className={`font-mono text-lg font-bold ${pnlClass}`}>{t.result === 'open' ? <OpenPendingBadge /> : t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}</div>
                           {settings && t.result !== 'b/e' && t.result !== 'open' && <div className={`font-mono text-[10px] ${pnlClass}`}>{fmtMoney(t.pnl_pct, settings.account_size, settings.currency)}</div>}
                           <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest border ${resultClass}`}>{resultText}</span>
                         </div>

@@ -6,6 +6,7 @@ import type { DailyJournal } from '../api/journal'
 import { getTrades } from '../api/trades'
 import { fmtMoney, useSettings } from '../contexts/SettingsContext'
 import type { Trade } from '../types'
+import OpenPendingBadge from '../components/OpenPendingBadge'
 
 const MOODS = [
   { val: 1, emoji: '😡', label: 'Злость' },
@@ -360,7 +361,7 @@ export default function Journal() {
                     </div>
                     <div className="shrink-0 text-left md:text-right">
                       <div className="font-mono text-lg font-bold" style={{ color: c }}>
-                        {t.result === 'open' ? 'OPEN' : t.result === 'b/e' ? '0.00%' : `${t.pnl_pct > 0 ? '+' : ''}${t.pnl_pct.toFixed(2)}%`}
+                        {t.result === 'open' ? <OpenPendingBadge /> : t.result === 'b/e' ? '0.00%' : `${t.pnl_pct > 0 ? '+' : ''}${t.pnl_pct.toFixed(2)}%`}
                       </div>
                       {settings && t.result !== 'open' && <div className="font-mono text-xs font-semibold" style={{ color: c }}>{fmtMoney(t.pnl_pct, settings.account_size, settings.currency)}</div>}
                       <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Open detail</div>

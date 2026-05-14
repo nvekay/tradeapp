@@ -5,6 +5,7 @@ import { getStrategy, deleteStrategy } from '../api/strategies'
 import { getTrades } from '../api/trades'
 import type { Strategy, Trade } from '../types'
 import { SESSION_LABELS } from '../constants'
+import OpenPendingBadge from '../components/OpenPendingBadge'
 
 const fmt = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(2)}%`
 
@@ -149,7 +150,7 @@ export default function StrategyDetail() {
                     </div>
                   </div>
                   <div className="font-mono text-sm font-bold" style={{ color: c }}>
-                    {t.result === 'open' ? 'OPEN' : t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}
+                    {t.result === 'open' ? <OpenPendingBadge /> : t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}
                   </div>
                 </div>
               )

@@ -8,6 +8,7 @@ import type { StatsSummary, PnlPoint, Trade, TagStat, FactorStat, MoodStat } fro
 import { useSettings, fmtMoney } from '../contexts/SettingsContext'
 import DailyLossBanner from '../components/DailyLossBanner'
 import PerformanceHeatmap from '../components/PerformanceHeatmap'
+import OpenPendingBadge from '../components/OpenPendingBadge'
 
 const COLORS = {
   primary: '#2563EB', success: '#059669', error: '#DC2626', warning: '#D97706',
@@ -81,7 +82,7 @@ function FeedItem({ t, onClick }: { t: Trade; onClick: () => void }) {
       <div className="flex-1 min-w-0">
         <div className="flex justify-between items-baseline mb-0.5">
           <span className="font-bold text-sm text-[#0F172A] truncate">{t.symbol}</span>
-          <span className={`font-mono text-sm font-bold ${pnlClass}`}>{t.result === 'open' ? 'OPEN' : t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}</span>
+          <span className={`font-mono text-sm font-bold ${pnlClass}`}>{t.result === 'open' ? <OpenPendingBadge /> : t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}</span>
         </div>
         <div className="flex justify-between items-baseline">
           <span className="text-xs text-[#64748B] truncate">{tags}</span>
