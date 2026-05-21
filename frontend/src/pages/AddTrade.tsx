@@ -17,6 +17,7 @@ import type { UserSymbol } from '../api/symbols'
 import type { Factor, Screenshot } from '../types'
 import { fmtMoney, useSettings } from '../contexts/SettingsContext'
 import { getTodayPnlPct } from '../components/DailyLossBanner'
+import { TestTube2 } from 'lucide-react'
 
 function toLocalInput(d: Date): string {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
@@ -51,6 +52,8 @@ export default function AddTrade() {
   const [factorIds, setFids] = useState<number[]>([])
   const [rating, setRating] = useState(0)
   const [strategyId, setStrategyId] = useState<number | null>(null)
+  const [isBacktest, setIsBacktest] = useState(false)
+  
   const [strategies, setStrategies] = useState<Strategy[]>([])
   const [factorList, setFactorList] = useState<Factor[]>([])
   const [symbolList, setSymbolList] = useState<UserSymbol[]>([])
@@ -66,7 +69,6 @@ export default function AddTrade() {
     listStrategies().then(s => {
       const active = s.filter(x => x.status === 'active')
       setStrategies(active)
-      // Preselect default strategy only for new trades
       if (!id && !duplicateId) {
         const def = active.find(x => x.is_default)
         if (def) setStrategyId(def.id)
@@ -94,9 +96,9 @@ export default function AddTrade() {
         setScreenshots(legacy)
       }
       setPsych(t.psychology); setFids(t.factors.map(f => f.id)); setRating(t.rating)
-      // psyIds will be hydrated by effect below once psyList is loaded
       setTradeType(t.trade_type)
       setStrategyId(t.strategy_id ?? null)
+      setIsBacktest(t.is_backtest || false)
     }).catch(() => setError('Trade not found or could not be loaded.'))
   }, [id])
 
@@ -109,10 +111,10 @@ export default function AddTrade() {
       setPsych(t.psychology); setFids(t.factors.map(f => f.id)); setRating(t.rating)
       setTradeType(t.trade_type)
       setStrategyId(t.strategy_id ?? null)
+      setIsBacktest(t.is_backtest || false)
     }).catch(() => setError('Source trade for duplication was not found. Start from a blank trade or go back.'))
   }, [duplicateId, id])
 
-  // Sync psyIds from psychology strings + psyList; create missing tags lazily on save
   useEffect(() => {
     if (!psyList.length || !psychology.length) { setPsyIds([]); return }
     const ids = psychology.map(name => psyList.find(t => t.name === name)?.id).filter((x): x is number => x !== undefined)
@@ -125,23 +127,55 @@ export default function AddTrade() {
     return 0
   }, [risk, rr, result])
 
+  const handleSaveAndNext = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault()
+    await submitTrade(true)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); setSub(true); setError('')
-    if (!isEdit && settings?.daily_loss_limit && todayPnl !== null && todayPnl <= settings.daily_loss_limit) {
+    e.preventDefault()
+    await submitTrade(false)
+  }
+
+  const submitTrade = async (keepOpen: boolean) => {
+    setSub(true); setError('')
+    if (!isEdit && !isBacktest && settings?.daily_loss_limit && todayPnl !== null && todayPnl <= settings.daily_loss_limit) {
       const proceed = window.confirm('Daily loss limit is already reached. Save this new trade anyway?')
       if (!proceed) { setSub(false); return }
     }
+    
+    // Auto-advance date for backtest mode if not explicitly chosen
+    let finalDate = date
+    if (isBacktest && !isEdit) {
+      const d = new Date()
+      // Use current time to avoid unique constraint issues if any, backtest dates aren't crucial
+      finalDate = toLocalInput(d)
+    }
+
     try {
       const payload = {
-        symbol, direction, risk, rr, result, date: new Date(date).toISOString(),
+        symbol, direction, risk, rr, result, date: new Date(finalDate).toISOString(),
         session, notes: notes || undefined,
         screenshots,
         psychology, factor_ids: factorIds, rating, trade_type: tradeType || undefined,
         strategy_id: strategyId,
+        is_backtest: isBacktest
       }
-      if (isEdit) await updateTrade(Number(id), payload)
-      else await createTrade(payload)
-      navigate('/trades')
+      if (isEdit) {
+        await updateTrade(Number(id), payload)
+        navigate('/trades')
+      } else {
+        await createTrade(payload)
+        if (keepOpen) {
+          // Reset only result, RR, and rating for fast entry
+          setResult('take')
+          setRr(2.0)
+          setRating(0)
+          // Flash a success message or just quietly reset
+        } else {
+          navigate('/trades')
+        }
+      }
     } catch (e: unknown) {
       const detail = (e as { response?: { data?: { detail?: string | { msg?: string }[] } } })?.response?.data?.detail
       const message = Array.isArray(detail) ? detail.map(x => x.msg).join(', ') : detail
@@ -149,7 +183,6 @@ export default function AddTrade() {
     } finally { setSub(false) }
   }
 
-  /* ─── Segmented toggle ─────────────────────────────────────── */
   function Segmented<T>({ opts, value, onChange }: {
     opts: { v: T; label: React.ReactNode; activeBg: string; activeColor: string }[]
     value: T; onChange: (v: T) => void
@@ -175,10 +208,22 @@ export default function AddTrade() {
   const pnlBorder = pnlPreview > 0 ? '#BBF7D0' : pnlPreview < 0 ? '#FECACA' : '#E2E8F0'
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-[#0F172A] tracking-tight">{isEdit ? 'Edit Trade' : 'Новая сделка'}</h2>
-        <p className="text-sm font-medium text-[#64748B] mt-1">Заполнение журнала параметров ордера</p>
+    <div className="max-w-4xl mx-auto pb-12">
+      <div className="mb-6 flex justify-between items-end">
+        <div>
+          <h2 className="text-2xl font-bold text-[#0F172A] tracking-tight">{isEdit ? 'Edit Trade' : 'Новая сделка'}</h2>
+          <p className="text-sm font-medium text-[#64748B] mt-1">Заполнение журнала параметров ордера</p>
+        </div>
+        
+        {!isEdit && (
+          <button 
+            onClick={() => setIsBacktest(!isBacktest)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${isBacktest ? 'bg-purple-100 text-purple-700 border border-purple-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+          >
+            <TestTube2 size={16} />
+            Бэктест-режим (быстрый ввод)
+          </button>
+        )}
       </div>
 
       {duplicateId && (
@@ -193,7 +238,7 @@ export default function AddTrade() {
         </div>
       )}
 
-      {!isEdit && settings?.daily_loss_limit && todayPnl !== null && todayPnl <= settings.daily_loss_limit && (
+      {!isEdit && !isBacktest && settings?.daily_loss_limit && todayPnl !== null && todayPnl <= settings.daily_loss_limit && (
         <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800">
           <div className="text-sm font-bold">Daily loss limit reached</div>
           <div className="mt-1 text-xs font-medium">
@@ -203,7 +248,7 @@ export default function AddTrade() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-[#F1F5F9] p-4 sm:p-8" style={{ boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }}>
+      <form onSubmit={handleSubmit} className={`bg-white rounded-2xl border ${isBacktest ? 'border-purple-200 shadow-[0_0_15px_rgba(168,85,247,0.1)]' : 'border-[#F1F5F9] shadow-sm'} p-4 sm:p-8 transition-all`}>
         <div className="space-y-6">
 
           {/* Row 1: Symbol / Direction / Result */}
@@ -269,46 +314,63 @@ export default function AddTrade() {
             </div>
           </div>
 
-          {/* Date / Session */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label>Date & Time</Label>
-              <input type="datetime-local" required value={date} onChange={e => setDate(e.target.value)} className={inputClass} />
-            </div>
-            <div>
-              <Label>Session</Label>
-              <select value={session} onChange={e => setSession(e.target.value as Session)} className={`${inputClass} cursor-pointer`}>
-                {Object.entries(SESSION_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {/* Screenshots */}
+          {/* Strategy */}
           <div>
-            <Label>Screenshots (TradingView URLs)</Label>
-            <ScreenshotsField value={screenshots} onChange={setScreenshots} />
+            <Label>Strategy</Label>
+            <select value={strategyId ?? ''} onChange={e => setStrategyId(e.target.value ? Number(e.target.value) : null)}
+              className={`${inputClass} cursor-pointer`}>
+              <option value="">— No strategy —</option>
+              {strategies.map(s => <option key={s.id} value={s.id}>{s.emoji} {s.name}</option>)}
+            </select>
           </div>
 
-          {/* Psychology / Factors */}
+          {!isBacktest && (
+            <>
+              {/* Date / Session */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Label>Date & Time</Label>
+                  <input type="datetime-local" required value={date} onChange={e => setDate(e.target.value)} className={inputClass} />
+                </div>
+                <div>
+                  <Label>Session</Label>
+                  <select value={session} onChange={e => setSession(e.target.value as Session)} className={`${inputClass} cursor-pointer`}>
+                    {Object.entries(SESSION_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Screenshots */}
+              <div>
+                <Label>Screenshots (TradingView URLs)</Label>
+                <ScreenshotsField value={screenshots} onChange={setScreenshots} />
+              </div>
+            </>
+          )}
+
+          {/* Psychology / Factors (Factors stay in backtest) */}
           <div className="space-y-4">
-            <div>
-              <Label>Psychology</Label>
-              <TagSearchSelect
-                options={psyList}
-                value={psyIds}
-                onChange={ids => {
-                  setPsyIds(ids)
-                  setPsych(ids.map(id => psyList.find(t => t.id === id)?.name).filter((x): x is string => !!x))
-                }}
-                onCreate={async (name) => {
-                  const t = await createPsychologyTag(name)
-                  setPsyList(prev => [...prev, t])
-                  return t
-                }}
-                placeholder="Select psychology tags..."
-                emptyText="No psychology tags yet — type to create your first one"
-              />
-            </div>
+            {!isBacktest && (
+              <div>
+                <Label>Psychology</Label>
+                <TagSearchSelect
+                  options={psyList}
+                  value={psyIds}
+                  onChange={ids => {
+                    setPsyIds(ids)
+                    setPsych(ids.map(id => psyList.find(t => t.id === id)?.name).filter((x): x is string => !!x))
+                  }}
+                  onCreate={async (name) => {
+                    const t = await createPsychologyTag(name)
+                    setPsyList(prev => [...prev, t])
+                    return t
+                  }}
+                  placeholder="Select psychology tags..."
+                  emptyText="No psychology tags yet — type to create your first one"
+                />
+              </div>
+            )}
+            
             <div>
               <Label>Factors</Label>
               <TagSearchSelect
@@ -332,30 +394,29 @@ export default function AddTrade() {
             <HeartPicker value={rating} onChange={setRating} />
           </div>
 
-          {/* Strategy */}
-          <div>
-            <Label>Strategy</Label>
-            <select value={strategyId ?? ''} onChange={e => setStrategyId(e.target.value ? Number(e.target.value) : null)}
-              className={`${inputClass} cursor-pointer`}>
-              <option value="">— No strategy —</option>
-              {strategies.map(s => <option key={s.id} value={s.id}>{s.emoji} {s.name}</option>)}
-            </select>
-          </div>
-
           {/* Notes */}
-          <div>
-            <Label>Notes</Label>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Trade notes..."
-              className="w-full p-3 bg-white border border-[#E2E8F0] rounded-lg text-sm text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] resize-none transition-all" />
-          </div>
+          {!isBacktest && (
+            <div>
+              <Label>Notes</Label>
+              <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Trade notes..."
+                className="w-full p-3 bg-white border border-[#E2E8F0] rounded-lg text-sm text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] resize-none transition-all" />
+            </div>
+          )}
 
           {error && <p className="text-[#DC2626] text-sm font-medium">{error}</p>}
 
           {/* Actions */}
           <div className="pt-4 flex space-x-3 border-t border-[#F1F5F9]">
-            <button type="submit" disabled={submitting} className="px-6 py-2.5 bg-[#2563EB] text-white text-sm font-semibold rounded-lg hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50">
-              {submitting ? 'Saving...' : isEdit ? 'Save Changes' : 'Add Trade'}
-            </button>
+            {isBacktest && !isEdit ? (
+              <button type="button" onClick={handleSaveAndNext} disabled={submitting} className="px-6 py-2.5 bg-purple-600 text-white text-sm font-semibold rounded-lg hover:bg-purple-700 active:scale-95 transition-all disabled:opacity-50">
+                {submitting ? 'Saving...' : 'Save & Add Next'}
+              </button>
+            ) : (
+              <button type="submit" disabled={submitting} className="px-6 py-2.5 bg-[#2563EB] text-white text-sm font-semibold rounded-lg hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50">
+                {submitting ? 'Saving...' : isEdit ? 'Save Changes' : 'Add Trade'}
+              </button>
+            )}
+            
             <button type="button" onClick={() => navigate(-1)} className="px-6 py-2.5 bg-white border border-[#E2E8F0] text-[#0F172A] text-sm font-semibold rounded-lg hover:bg-gray-50 active:scale-95 transition-all">
               Cancel
             </button>

@@ -3,6 +3,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Trades from './pages/Trades'
+import Backtests from './pages/Backtests'
 import AddTrade from './pages/AddTrade'
 import News from './pages/News'
 import Checklist from './pages/Checklist'
@@ -33,6 +34,7 @@ export default function App() {
           <Route element={<AuthGuard><SettingsProvider><OnboardingGuard><Layout /></OnboardingGuard></SettingsProvider></AuthGuard>}>
             <Route path="/app" element={<Dashboard />} />
             <Route path="/trades" element={<Trades />} />
+            <Route path="/backtests" element={<Backtests />} />
             <Route path="/trade/:id" element={<TradeDetail />} />
             <Route path="/trades/:id" element={<TradeDetail />} />
             <Route path="/add" element={<AddTrade />} />
