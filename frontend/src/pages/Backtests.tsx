@@ -1,17 +1,12 @@
-import { useState, useMemo, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { createTrade, getTrades, deleteTrade } from '../api/trades'
 import { listStrategies } from '../api/strategies'
 import { getSymbols, createSymbol, type UserSymbol } from '../api/symbols'
-import { getFactors, createFactor } from '../api/factors'
-import type { Strategy, Factor, Direction, TradeResult, TradeType, Trade } from '../types'
+import type { Strategy, Direction, TradeResult, Trade } from '../types'
 import SymbolSelect from '../components/SymbolSelect'
-import TagSearchSelect from '../components/TagSearchSelect'
-import { useSettings, fmtMoney } from '../contexts/SettingsContext'
 import { Trash2 } from 'lucide-react'
 
 const inputClass = "w-full h-10 px-3 bg-white border border-[#E2E8F0] rounded-lg text-sm font-medium text-[#0F172A] focus:outline-none focus:border-[#2563EB] transition-all"
-const mono = { fontFamily: "'Space Mono', monospace" }
 
 function Label({ children }: { children: React.ReactNode }) {
   return <label className="block text-[11px] font-bold uppercase tracking-wider text-[#64748B] mb-2">{children}</label>
@@ -38,7 +33,6 @@ function Segmented<T>({ opts, value, onChange }: {
 }
 
 export default function Backtests() {
-  const { settings } = useSettings()
   
   // Form State
   const [symbol, setSymbol] = useState('GER40')
@@ -46,31 +40,25 @@ export default function Backtests() {
   const [risk, setRisk] = useState(1.0)
   const [rr, setRr] = useState(2.0)
   const [result, setResult] = useState<TradeResult>('take')
-  const [tradeType, setTradeType] = useState<TradeType | null>(null)
-  const [factorIds, setFids] = useState<number[]>([])
   const [strategyId, setStrategyId] = useState<number | null>(null)
   
   // App Data
   const [strategies, setStrategies] = useState<Strategy[]>([])
   const [symbolList, setSymbolList] = useState<UserSymbol[]>([])
-  const [factorList, setFactorList] = useState<Factor[]>([])
   
   // Backtest Records
   const [backtests, setBacktests] = useState<Trade[]>([])
-  const [loading, setLoading] = useState(true)
   const [submitting, setSub] = useState(false)
 
   const loadData = () => {
-    setLoading(true)
     Promise.all([
-      listStrategies(), getSymbols(), getFactors(),
-      getTrades({ is_backtest: 'true' } as any) // We will pass this to API
-    ]).then(([s, syms, facs, trades]) => {
+      listStrategies(), getSymbols(),
+      getTrades({ is_backtest: 'true' } as any)
+    ]).then(([s, syms, trades]) => {
       setStrategies(s.filter(x => x.status === 'active'))
       setSymbolList(syms)
-      setFactorList(facs)
-      setBacktests(trades.filter(t => t.is_backtest))
-    }).finally(() => setLoading(false))
+      setBacktests(trades.filter(t => (t as any).is_backtest))
+    }).finally(() => {})
   }
 
   useEffect(() => { loadData() }, [])
@@ -81,17 +69,14 @@ export default function Backtests() {
     try {
       const payload = {
         symbol, direction, risk, rr, result,
-        date: new Date().toISOString(), // Use current time, date doesn't matter for fast backtest
-        session: 'london' as Session,   // Default filler
-        factor_ids: factorIds,
-        trade_type: tradeType || undefined,
+        date: new Date().toISOString(),
+        session: 'london' as const,
         strategy_id: strategyId,
         is_backtest: true
       }
       const newTrade = await createTrade(payload)
       setBacktests([newTrade, ...backtests])
       
-      // Reset only result-specific fields for rapid entry
       setResult('take')
     } catch (err) {
       alert("Failed to save backtest trade.")
@@ -110,7 +95,6 @@ export default function Backtests() {
   const pnlBg = pnlPreview > 0 ? '#F0FDF4' : pnlPreview < 0 ? '#FEF2F2' : '#F8FAFC'
   const pnlBorder = pnlPreview > 0 ? '#BBF7D0' : pnlPreview < 0 ? '#FECACA' : '#E2E8F0'
 
-  // Stats calculation
   const totalTrades = backtests.length
   const wins = backtests.filter(t => t.pnl_pct > 0).length
   const winrate = totalTrades > 0 ? Math.round((wins / totalTrades) * 100) : 0
@@ -126,8 +110,6 @@ export default function Backtests() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Left Col: Fast Entry Form */}
         <div className="lg:col-span-2">
           <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-purple-200 shadow-[0_0_15px_rgba(168,85,247,0.1)] p-5 sm:p-6 mb-6">
             <h3 className="text-sm font-bold text-[#0F172A] mb-4 pb-2 border-b border-[#F1F5F9] flex items-center gap-2">
@@ -251,7 +233,6 @@ export default function Backtests() {
                 <div className={`font-mono text-3xl font-bold ${totalPnl > 0 ? 'text-[#059669]' : totalPnl < 0 ? 'text-[#DC2626]' : 'text-[#64748B]'}`}>
                   {totalPnl > 0 ? '+' : ''}{totalPnl.toFixed(2)}%
                 </div>
-                {settings && <div className={`font-mono text-sm mt-1 font-semibold ${totalPnl > 0 ? 'text-[#059669]' : totalPnl < 0 ? 'text-[#DC2626]' : 'text-[#64748B]'}`}>{fmtMoney(totalPnl, settings.account_size, settings.currency)}</div>}
               </div>
 
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[#F1F5F9]">
