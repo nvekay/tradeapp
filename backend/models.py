@@ -61,6 +61,7 @@ class Trade(Base):
     screenshots = Column(JSON, nullable=False, default=list)  # [{label, url}, ...]
     rating = Column(Integer, nullable=False, default=0)
     trade_type = Column(String, nullable=True)  # "trend" | "countertrend"
+    is_backtest = Column(Boolean, nullable=False, default=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     strategy_id = Column(Integer, ForeignKey("strategies.id", ondelete="SET NULL"), nullable=True)
 

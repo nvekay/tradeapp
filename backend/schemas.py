@@ -84,6 +84,7 @@ class TradeBase(BaseModel):
     screenshots: list[Screenshot] = []
     rating: int = 0
     trade_type: Optional[Literal["trend", "countertrend"]] = None
+    is_backtest: bool = False
     strategy_id: Optional[int] = None
 
     @field_validator("rating")
@@ -139,6 +140,7 @@ class TradeUpdate(BaseModel):
     screenshots: Optional[list[Screenshot]] = None
     rating: Optional[int] = None
     trade_type: Optional[Literal["trend", "countertrend"]] = None
+    is_backtest: Optional[bool] = None
     strategy_id: Optional[int] = None
     factor_ids: Optional[list[int]] = None
     pnl_pct: Optional[float] = None
