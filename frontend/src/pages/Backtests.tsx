@@ -1,254 +1,274 @@
-import { useState, useEffect } from 'react'
-import { createTrade, getTrades, deleteTrade } from '../api/trades'
-import { listStrategies } from '../api/strategies'
-import { getSymbols, createSymbol, type UserSymbol } from '../api/symbols'
-import type { Strategy, Direction, TradeResult, Trade } from '../types'
-import SymbolSelect from '../components/SymbolSelect'
-import { Trash2 } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Plus, Trash2, Pencil, Search } from 'lucide-react'
+import { getTrades, deleteTrade } from '../api/trades'
+import { getBySymbol } from '../api/stats'
+import { useSettings, fmtMoney } from '../contexts/SettingsContext'
+import type { Trade, SymbolStat } from '../types'
+import OpenPendingBadge from '../components/OpenPendingBadge'
 
-const inputClass = "w-full h-10 px-3 bg-white border border-[#E2E8F0] rounded-lg text-sm font-medium text-[#0F172A] focus:outline-none focus:border-[#2563EB] transition-all"
+type SortField = 'date' | 'symbol' | 'pnl_pct' | 'rating' | 'rr'
+type SortDir = 'asc' | 'desc'
 
-function Label({ children }: { children: React.ReactNode }) {
-  return <label className="block text-[11px] font-bold uppercase tracking-wider text-[#64748B] mb-2">{children}</label>
+interface Filters {
+  symbol: string; direction: string; result: string; rating: string
+  from: string; to: string
 }
 
-function Segmented<T>({ opts, value, onChange }: {
-  opts: { v: T; label: React.ReactNode; activeBg: string; activeColor: string }[]
-  value: T; onChange: (v: T) => void
-}) {
-  return (
-    <div className="flex rounded-lg border border-[#E2E8F0] overflow-hidden bg-white h-10">
-      {opts.map((o, i) => {
-        const active = value === o.v
-        return (
-          <button key={i} type="button" onClick={() => onChange(o.v)}
-            className={`flex-1 flex items-center justify-center text-sm transition-colors ${i < opts.length - 1 ? 'border-r border-[#E2E8F0]' : ''} ${active ? 'font-bold' : 'text-[#64748B] hover:bg-gray-50 font-medium'}`}
-            style={active ? { background: o.activeBg, color: o.activeColor } : {}}>
-            {o.label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
+const fmt = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(2)}%`
+const resultLabel = (result: string) =>
+  result === 'take' ? 'Take Profit' : result === 'stop' ? 'Stop Loss' : result === 'open' ? 'Open' : 'Break Even'
+const resultShort = (result: string) =>
+  result === 'take' ? 'Take' : result === 'stop' ? 'Stop' : result === 'open' ? 'Open' : 'B/E'
+const resultBadgeClass = (result: string) =>
+  result === 'take' ? 'bg-green-50 border-green-100 text-[#059669]'
+    : result === 'stop' ? 'bg-red-50 border-red-100 text-[#DC2626]'
+    : result === 'open' ? 'bg-blue-50 border-blue-100 text-[#2563EB]'
+    : 'bg-amber-50 border-amber-100 text-[#D97706]'
 
 export default function Backtests() {
-  
-  // Form State
-  const [symbol, setSymbol] = useState('GER40')
-  const [direction, setDir] = useState<Direction>('long')
-  const [risk, setRisk] = useState(1.0)
-  const [rr, setRr] = useState(2.0)
-  const [result, setResult] = useState<TradeResult>('take')
-  const [strategyId, setStrategyId] = useState<number | null>(null)
-  
-  // App Data
-  const [strategies, setStrategies] = useState<Strategy[]>([])
-  const [symbolList, setSymbolList] = useState<UserSymbol[]>([])
-  
-  // Backtest Records
-  const [backtests, setBacktests] = useState<Trade[]>([])
-  const [submitting, setSub] = useState(false)
+  const navigate = useNavigate()
+  const { settings } = useSettings()
+  const [trades, setTrades] = useState<Trade[]>([])
+  const [stats, setStats] = useState<SymbolStat[]>([])
+  const [loading, setLoading] = useState(true)
+  const [sortField, setSortField] = useState<SortField>('date')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [filters, setFilters] = useState<Filters>({ symbol: '', direction: '', result: '', rating: '', from: '', to: '' })
 
-  const loadData = () => {
+  const apiFilters = useMemo(() => {
+    const f: any = { is_backtest: 'true' }
+    if (filters.from) f.from = `${filters.from}T00:00:00`
+    if (filters.to) f.to = `${filters.to}T23:59:59`
+    return f
+  }, [filters.from, filters.to])
+
+  useEffect(() => {
+    setLoading(true)
     Promise.all([
-      listStrategies(), getSymbols(),
-      getTrades({ is_backtest: 'true' } as any)
-    ]).then(([s, syms, trades]) => {
-      setStrategies(s.filter(x => x.status === 'active'))
-      setSymbolList(syms)
-      setBacktests(trades.filter(t => (t as any).is_backtest))
-    }).finally(() => {})
-  }
+      getTrades(apiFilters),
+      getBySymbol(apiFilters)
+    ]).then(([t, s]) => {
+      setTrades(t)
+      setStats(s)
+    }).finally(() => setLoading(false))
+  }, [apiFilters])
 
-  useEffect(() => { loadData() }, [])
+  const filtered = useMemo(() => {
+    return trades.filter(t => {
+      if (filters.symbol && !t.symbol.toLowerCase().includes(filters.symbol.toLowerCase())) return false
+      if (filters.direction && t.direction !== filters.direction) return false
+      if (filters.result && t.result !== filters.result) return false
+      if (filters.rating && t.rating < Number(filters.rating)) return false
+      return true
+    })
+  }, [trades, filters])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSub(true)
-    try {
-      const payload = {
-        symbol, direction, risk, rr, result,
-        date: new Date().toISOString(),
-        session: 'london' as const,
-        strategy_id: strategyId,
-        is_backtest: true
-      }
-      const newTrade = await createTrade(payload)
-      setBacktests([newTrade, ...backtests])
-      
-      setResult('take')
-    } catch (err) {
-      alert("Failed to save backtest trade.")
-    } finally {
-      setSub(false)
-    }
+  const sorted = useMemo(() => {
+    const arr = [...filtered]
+    arr.sort((a, b) => {
+      const va = a[sortField], vb = b[sortField]
+      if (typeof va === 'number' && typeof vb === 'number') return sortDir === 'asc' ? va - vb : vb - va
+      return sortDir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va))
+    })
+    return arr
+  }, [filtered, sortField, sortDir])
+
+  const toggleSort = (f: SortField) => {
+    if (sortField === f) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortField(f); setSortDir('desc') }
   }
 
   const handleDelete = async (id: number) => {
+    if (!confirm('Delete this backtest trade?')) return
     await deleteTrade(id)
-    setBacktests(prev => prev.filter(t => t.id !== id))
+    setTrades(t => t.filter(x => x.id !== id))
   }
 
-  const pnlPreview = result === 'take' ? risk * rr : result === 'stop' ? -risk : 0
-  const pnlColor = pnlPreview > 0 ? '#059669' : pnlPreview < 0 ? '#DC2626' : '#64748B'
-  const pnlBg = pnlPreview > 0 ? '#F0FDF4' : pnlPreview < 0 ? '#FEF2F2' : '#F8FAFC'
-  const pnlBorder = pnlPreview > 0 ? '#BBF7D0' : pnlPreview < 0 ? '#FECACA' : '#E2E8F0'
+  const SortBtn = ({ field, label, className = '' }: { field: SortField; label: string; className?: string }) => (
+    <button onClick={() => toggleSort(field)} className={`inline-flex items-center gap-1 hover:text-[#0F172A] ${className}`}>
+      {label} {sortField === field && <span className="text-[#2563EB]">{sortDir === 'asc' ? '▲' : '▼'}</span>}
+    </button>
+  )
 
-  const totalTrades = backtests.length
-  const wins = backtests.filter(t => t.pnl_pct > 0).length
-  const winrate = totalTrades > 0 ? Math.round((wins / totalTrades) * 100) : 0
-  const totalPnl = backtests.reduce((acc, t) => acc + t.pnl_pct, 0)
-  
+  const activeStat = filters.symbol ? stats.find(s => s.symbol.toLowerCase() === filters.symbol.toLowerCase()) : null
+
   return (
-    <div className="max-w-5xl mx-auto pb-12">
-      <div className="mb-6 flex justify-between items-end">
+    <div>
+      <div className="flex flex-col md:flex-row md:justify-between md:items-end mb-6 gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-[#0F172A] tracking-tight">Backtest Hub</h2>
-          <p className="text-sm font-medium text-[#64748B] mt-1">Турбо-режим для быстрого ввода статистики тестов</p>
+          <h2 className="text-2xl font-bold text-[#0F172A] tracking-tight">Backtests Journal</h2>
+          <p className="text-sm font-medium text-[#64748B] mt-1">{sorted.length} backtest records</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => navigate('/backtests/new')} className="px-4 py-2 bg-purple-600 text-white text-xs font-semibold rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-1.5" style={{ boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }}>
+            <span className="text-base leading-none">⚡</span> Fast Entry
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-purple-200 shadow-[0_0_15px_rgba(168,85,247,0.1)] p-5 sm:p-6 mb-6">
-            <h3 className="text-sm font-bold text-[#0F172A] mb-4 pb-2 border-b border-[#F1F5F9] flex items-center gap-2">
-              <span className="text-purple-600">⚡</span> Fast Entry Form
-            </h3>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
-              <div>
-                <Label>Symbol</Label>
-                <SymbolSelect
-                  value={symbol} onChange={setSymbol} options={symbolList}
-                  preferred={strategies.find(s => s.id === strategyId)?.allowed_symbols ?? []}
-                  onCreate={async (n) => { const s = await createSymbol(n); setSymbolList(p => [...p, s]); return s }}
-                />
-              </div>
-              <div>
-                <Label>Strategy (Optional)</Label>
-                <select value={strategyId ?? ''} onChange={e => setStrategyId(e.target.value ? Number(e.target.value) : null)} className={`${inputClass} cursor-pointer`}>
-                  <option value="">— No strategy —</option>
-                  {strategies.map(s => <option key={s.id} value={s.id}>{s.emoji} {s.name}</option>)}
-                </select>
-              </div>
+      {activeStat && (
+        <div className="mb-6 grid grid-cols-4 gap-4 p-5 bg-white border border-purple-100 rounded-2xl shadow-sm">
+          <div>
+            <div className="text-[10px] uppercase font-bold text-[#64748B] tracking-wider mb-1">Asset</div>
+            <div className="text-xl font-bold text-[#0F172A]">{activeStat.symbol}</div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase font-bold text-[#64748B] tracking-wider mb-1">Trades</div>
+            <div className="text-xl font-bold text-[#0F172A]">{activeStat.total_trades}</div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase font-bold text-[#64748B] tracking-wider mb-1">Winrate</div>
+            <div className="text-xl font-bold text-[#0F172A]">{activeStat.winrate}%</div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase font-bold text-[#64748B] tracking-wider mb-1">Total PnL</div>
+            <div className={`text-xl font-bold font-mono ${activeStat.total_pnl_pct > 0 ? 'text-[#059669]' : 'text-[#DC2626]'}`}>
+              {activeStat.total_pnl_pct > 0 ? '+' : ''}{activeStat.total_pnl_pct.toFixed(2)}%
             </div>
+          </div>
+        </div>
+      )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-5">
-              <div>
-                <Label>Direction</Label>
-                <Segmented value={direction} onChange={setDir} opts={[
-                  { v: 'long', label: 'Long', activeBg: '#F0FDF4', activeColor: '#059669' },
-                  { v: 'short', label: 'Short', activeBg: '#FEF2F2', activeColor: '#DC2626' },
-                ]} />
-              </div>
-              <div>
-                <Label>Risk %</Label>
-                <input type="number" step="0.01" min="0.01" required value={risk} onChange={e => setRisk(Number(e.target.value))} className={`${inputClass} font-mono`} />
-              </div>
-              <div>
-                <Label>RR</Label>
-                <input type="number" step="0.01" min="0.01" required value={rr} onChange={e => setRr(Number(e.target.value))} className={`${inputClass} font-mono`} />
-              </div>
-            </div>
+      <div className="bg-white rounded-2xl border border-[#F1F5F9] overflow-hidden flex flex-col" style={{ boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }}>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-5">
-              <div className="sm:col-span-2">
-                <Label>Result</Label>
-                <Segmented value={result} onChange={setResult} opts={[
-                  { v: 'take', label: 'Take', activeBg: '#F0FDF4', activeColor: '#059669' },
-                  { v: 'stop', label: 'Stop', activeBg: '#FEF2F2', activeColor: '#DC2626' },
-                  { v: 'b/e', label: 'B/E', activeBg: '#FFFBEB', activeColor: '#D97706' },
-                ]} />
-              </div>
-              <div>
-                <Label>PnL Preview</Label>
-                <div className="w-full h-10 px-3 rounded-lg text-lg font-bold flex items-center justify-center font-mono border"
-                  style={{ background: pnlBg, color: pnlColor, borderColor: pnlBorder }}>
-                  {pnlPreview > 0 ? '+' : ''}{pnlPreview.toFixed(2)}%
+        {/* Filters Row */}
+        <div className="p-3 border-b border-[#F1F5F9] flex flex-wrap gap-2 items-center bg-gray-50/50">
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+            <input value={filters.symbol} onChange={e => setFilters(f => ({ ...f, symbol: e.target.value }))}
+              placeholder="Search symbol for stats..." className="h-9 pl-9 pr-3 bg-white border border-[#E2E8F0] rounded-lg text-xs w-56 focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] text-[#0F172A]" />
+          </div>
+
+          <select value={filters.direction} onChange={e => setFilters(f => ({ ...f, direction: e.target.value }))}
+            className="h-9 pl-3 pr-8 bg-white border border-[#E2E8F0] rounded-lg text-xs font-medium text-[#0F172A] focus:outline-none cursor-pointer">
+            <option value="">All Directions</option><option value="long">Long</option><option value="short">Short</option>
+          </select>
+
+          <select value={filters.result} onChange={e => setFilters(f => ({ ...f, result: e.target.value }))}
+            className="h-9 pl-3 pr-8 bg-white border border-[#E2E8F0] rounded-lg text-xs font-medium text-[#0F172A] focus:outline-none cursor-pointer">
+            <option value="">All Results</option><option value="take">Take</option><option value="stop">Stop</option><option value="b/e">B/E</option>
+          </select>
+        </div>
+
+        {loading ? (
+          <div className="p-12 text-center text-[#64748B]">Loading...</div>
+        ) : sorted.length === 0 ? (
+          <div className="p-12 text-center text-[#94A3B8]">No backtest trades found</div>
+        ) : (
+          <>
+          <div className="space-y-3 p-3 md:hidden">
+            {sorted.map(t => {
+              const dt = new Date(t.date + 'Z')
+              const isWin = t.pnl_pct > 0
+              const isLoss = t.pnl_pct < 0
+              const pnlClass = isWin ? 'text-[#059669]' : isLoss ? 'text-[#DC2626]' : 'text-[#64748B]'
+              const resultClass = resultBadgeClass(t.result)
+              return (
+                <div key={t.id}
+                  className="rounded-2xl border border-[#F1F5F9] bg-white p-4 shadow-sm">
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-bold text-[#0F172A]">{t.symbol}</div>
+                      <div className="mt-0.5 text-xs font-medium text-[#64748B]">
+                        {dt.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} • {dt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className={`font-mono text-lg font-bold ${pnlClass}`}>{t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}</div>
+                    </div>
+                  </div>
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    <span className="rounded-lg bg-gray-100 px-2 py-1 text-[11px] font-bold capitalize text-gray-700">{t.direction}</span>
+                    <span className={`rounded-lg border px-2 py-1 text-[11px] font-bold ${resultClass}`}>{resultShort(t.result)}</span>
+                    <span className="rounded-lg bg-gray-100 px-2 py-1 text-[11px] font-bold text-gray-700">{t.risk}% risk / 1:{t.rr}</span>
+                  </div>
+                  <div className="flex items-center justify-end border-t border-[#F1F5F9] pt-3">
+                    <button onClick={e => { e.stopPropagation(); handleDelete(t.id) }} className="inline-flex items-center gap-1 text-xs font-bold text-[#DC2626]"><Trash2 size={13} /> Delete</button>
+                  </div>
                 </div>
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <button type="submit" disabled={submitting} className="w-full h-12 bg-purple-600 text-white text-sm font-semibold rounded-lg hover:bg-purple-700 active:scale-95 transition-all disabled:opacity-50 shadow-md">
-                {submitting ? 'Saving...' : 'Save & Add Next'}
-              </button>
-            </div>
-          </form>
-
-          {/* Table of Backtest Trades */}
-          <div className="bg-white rounded-2xl border border-[#F1F5F9] shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-[#F1F5F9] flex justify-between items-center">
-              <h3 className="text-sm font-bold text-[#0F172A]">Recent Backtest Entries</h3>
-              <span className="text-xs font-medium text-[#64748B]">{backtests.length} records</span>
-            </div>
-            {backtests.length === 0 ? (
-              <div className="p-8 text-center text-sm text-[#94A3B8]">No backtest records yet.</div>
-            ) : (
-              <div className="max-h-[500px] overflow-y-auto">
-                <table className="w-full text-left border-collapse whitespace-nowrap">
-                  <thead className="bg-[#F8FAFC] sticky top-0">
-                    <tr>
-                      <th className="px-4 py-2 text-[10px] font-bold text-[#64748B] uppercase tracking-wider">Asset</th>
-                      <th className="px-4 py-2 text-[10px] font-bold text-[#64748B] uppercase tracking-wider">Dir</th>
-                      <th className="px-4 py-2 text-[10px] font-bold text-[#64748B] uppercase tracking-wider">Metrics</th>
-                      <th className="px-4 py-2 text-[10px] font-bold text-[#64748B] uppercase tracking-wider text-right">PnL</th>
-                      <th className="px-3 py-2"></th>
+              )
+            })}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full text-left border-collapse whitespace-nowrap min-w-[900px]">
+              <thead className="bg-white border-b border-[#F1F5F9]">
+                <tr>
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-[#64748B] uppercase tracking-wider"><SortBtn field="symbol" label="Asset & Time" /></th>
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-[#64748B] uppercase tracking-wider">Setup</th>
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-[#64748B] uppercase tracking-wider"><SortBtn field="rr" label="Metrics (Risk / RR)" /></th>
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-[#64748B] uppercase tracking-wider">Context & Tags</th>
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-[#64748B] uppercase tracking-wider text-right"><SortBtn field="pnl_pct" label="Result PnL" className="ml-auto" /></th>
+                  <th className="px-3 py-3.5"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map(t => {
+                  const dt = new Date(t.date + 'Z')
+                  const dirColor = t.direction === 'long' ? 'text-[#059669]' : 'text-[#DC2626]'
+                  const isWin = t.pnl_pct > 0
+                  const isLoss = t.pnl_pct < 0
+                  const resultClass = resultBadgeClass(t.result)
+                  const resultText = resultLabel(t.result)
+                  const pnlClass = isWin ? 'text-[#059669]' : isLoss ? 'text-[#DC2626]' : 'text-[#64748B]'
+                  return (
+                    <tr key={t.id} className="border-b border-[#F1F5F9]/60 hover:bg-gray-50/80 transition-colors group">
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center font-bold text-xs text-[#0F172A]">{t.symbol.slice(0, 2)}</div>
+                          <div>
+                            <div className="font-bold text-sm text-[#0F172A]">{t.symbol}</div>
+                            <div className="text-[11px] text-[#64748B] font-medium">
+                              {dt.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} • {dt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[11px] font-bold ${dirColor}`}>{t.direction === 'long' ? 'Long' : 'Short'}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex flex-col gap-1">
+                          <div className="text-sm font-mono text-[#0F172A] font-medium">{t.risk}% <span className="text-[10px] text-[#64748B] font-sans ml-1 uppercase tracking-widest font-bold">Risk</span></div>
+                          <div className="text-sm font-mono text-[#0F172A] font-medium">1:{t.rr} <span className="text-[10px] text-[#64748B] font-sans ml-1 uppercase tracking-widest font-bold">RR</span></div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex flex-wrap gap-1.5 max-w-[280px]">
+                          {t.psychology.slice(0, 2).map(p => {
+                            const isGood = p.toLowerCase().includes('систем')
+                            const cls = isGood ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'
+                            return <span key={p} className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${cls}`}>{p.split('/')[0].trim()}</span>
+                          })}
+                          {t.factors.slice(0, 2).map(f => (
+                            <span key={f.id} className="px-2 py-0.5 rounded-md text-[10px] font-bold border bg-gray-100 text-gray-700 border-gray-200">{f.name}</span>
+                          ))}
+                          {(t.psychology.length + t.factors.length) > 4 && <span className="text-[11px] text-[#94A3B8]">+{t.psychology.length + t.factors.length - 4}</span>}
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <div className="flex flex-col items-end gap-1">
+                          <div className={`font-mono text-lg font-bold ${pnlClass}`}>{t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}</div>
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest border ${resultClass}`}>{resultText}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex gap-1">
+                          <button onClick={e => { e.stopPropagation(); handleDelete(t.id) }} className="p-1.5 rounded-md hover:bg-red-50 text-[#64748B] hover:text-[#DC2626] transition-colors"><Trash2 size={14} /></button>
+                        </div>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {backtests.map(t => (
-                      <tr key={t.id} className="border-b border-[#F1F5F9] hover:bg-gray-50/50">
-                        <td className="px-4 py-3 font-bold text-sm text-[#0F172A]">{t.symbol}</td>
-                        <td className={`px-4 py-3 text-xs font-bold ${t.direction === 'long' ? 'text-[#059669]' : 'text-[#DC2626]'}`}>{t.direction.toUpperCase()}</td>
-                        <td className="px-4 py-3">
-                          <span className="text-xs font-mono text-[#0F172A]">{t.risk}%</span> <span className="text-[#94A3B8] text-[10px]">R</span>
-                          <span className="mx-1 text-[#E2E8F0]">|</span>
-                          <span className="text-xs font-mono text-[#0F172A]">1:{t.rr}</span> <span className="text-[#94A3B8] text-[10px]">RR</span>
-                        </td>
-                        <td className={`px-4 py-3 text-right font-mono font-bold text-sm ${t.pnl_pct > 0 ? 'text-[#059669]' : t.pnl_pct < 0 ? 'text-[#DC2626]' : 'text-[#64748B]'}`}>
-                          {t.pnl_pct > 0 ? '+' : ''}{t.pnl_pct.toFixed(2)}%
-                        </td>
-                        <td className="px-3 py-3 text-right">
-                          <button onClick={() => handleDelete(t.id)} className="p-1.5 rounded-md hover:bg-red-50 text-[#94A3B8] hover:text-[#DC2626] transition-colors"><Trash2 size={14} /></button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
-        </div>
-
-        {/* Right Col: Backtest Stats */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-2xl border border-[#F1F5F9] p-5 shadow-sm sticky top-6">
-            <h3 className="text-sm font-bold text-[#0F172A] mb-4 pb-2 border-b border-[#F1F5F9]">Backtest Performance</h3>
-            
-            <div className="space-y-5">
-              <div>
-                <div className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] mb-1">Total PnL</div>
-                <div className={`font-mono text-3xl font-bold ${totalPnl > 0 ? 'text-[#059669]' : totalPnl < 0 ? 'text-[#DC2626]' : 'text-[#64748B]'}`}>
-                  {totalPnl > 0 ? '+' : ''}{totalPnl.toFixed(2)}%
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[#F1F5F9]">
-                <div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#64748B] mb-1">Win Rate</div>
-                  <div className="font-mono text-xl font-bold text-[#0F172A]">{winrate}%</div>
-                </div>
-                <div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#64748B] mb-1">Total Trades</div>
-                  <div className="font-mono text-xl font-bold text-[#0F172A]">{totalTrades}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
+          </>
+        )}
       </div>
     </div>
   )

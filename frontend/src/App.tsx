@@ -4,6 +4,7 @@ import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Trades from './pages/Trades'
 import Backtests from './pages/Backtests'
+import BacktestEntry from './pages/BacktestEntry'
 import AddTrade from './pages/AddTrade'
 import News from './pages/News'
 import Checklist from './pages/Checklist'
@@ -35,6 +36,7 @@ export default function App() {
             <Route path="/app" element={<Dashboard />} />
             <Route path="/trades" element={<Trades />} />
             <Route path="/backtests" element={<Backtests />} />
+            <Route path="/backtests/new" element={<BacktestEntry />} />
             <Route path="/trade/:id" element={<TradeDetail />} />
             <Route path="/trades/:id" element={<TradeDetail />} />
             <Route path="/add" element={<AddTrade />} />
