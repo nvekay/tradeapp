@@ -30,6 +30,7 @@ export interface Trade {
   trade_type: TradeType | null
   factors: Factor[]
   strategy_id?: number | null
+  is_backtest?: boolean
 }
 
 export interface TradeCreate {
@@ -50,6 +51,7 @@ export interface TradeCreate {
   trade_type?: TradeType | null
   factor_ids?: number[]
   strategy_id?: number | null
+  is_backtest?: boolean
 }
 
 export type TradeUpdate = Partial<TradeCreate>
