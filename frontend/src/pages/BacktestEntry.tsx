@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { createTrade } from '../api/trades'
+import { createBacktestTrade } from '../api/backtests'
 import { listStrategies } from '../api/strategies'
 import { getSymbols, createSymbol, type UserSymbol } from '../api/symbols'
 import { getFactors, createFactor } from '../api/factors'
@@ -88,9 +88,8 @@ export default function BacktestEntry() {
         factor_ids: factorIds,
         psychology: psychology,
         strategy_id: strategyId,
-        is_backtest: true
       }
-      await createTrade(payload)
+      await createBacktestTrade(payload)
       setSuccess(true)
       setTimeout(() => setSuccess(false), 1500)
       

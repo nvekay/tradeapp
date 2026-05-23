@@ -61,13 +61,39 @@ class Trade(Base):
     screenshots = Column(JSON, nullable=False, default=list)  # [{label, url}, ...]
     rating = Column(Integer, nullable=False, default=0)
     trade_type = Column(String, nullable=True)  # "trend" | "countertrend"
-    is_backtest = Column(Boolean, nullable=False, default=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     strategy_id = Column(Integer, ForeignKey("strategies.id", ondelete="SET NULL"), nullable=True)
 
     user = relationship("User", back_populates="trades")
     strategy = relationship("Strategy", back_populates="trades")
     factors = relationship("Factor", secondary="trade_factors", back_populates="trades")
+
+class BacktestTradeFactors(Base):
+    __tablename__ = "backtest_trade_factors"
+
+    backtest_trade_id = Column(Integer, ForeignKey("backtest_trades.id", ondelete="CASCADE"), primary_key=True)
+    factor_id = Column(Integer, ForeignKey("factors.id", ondelete="CASCADE"), primary_key=True)
+
+class BacktestTrade(Base):
+    __tablename__ = "backtest_trades"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    symbol = Column(String, nullable=False)
+    direction = Column(String, nullable=False)       # "long" | "short"
+    risk = Column(Float, nullable=False, default=1.0)
+    rr = Column(Float, nullable=False)
+    result = Column(String, nullable=False)          # "take" | "stop" | "b/e" | "open"
+    pnl_pct = Column(Float, nullable=False)
+    date = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    session = Column(String, nullable=False)         # "london" | "new_york" | "asian" | "overlap"
+    psychology = Column(JSON, nullable=False, default=list)
+    trade_type = Column(String, nullable=True)  # "trend" | "countertrend"
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    strategy_id = Column(Integer, ForeignKey("strategies.id", ondelete="SET NULL"), nullable=True)
+
+    user = relationship("User")
+    strategy = relationship("Strategy")
+    factors = relationship("Factor", secondary="backtest_trade_factors")
 
 
 class DailyJournal(Base):

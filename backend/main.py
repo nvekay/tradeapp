@@ -48,9 +48,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from routes import auth, export as export_route, factors, journal, psychology, settings as settings_route, stats, strategies, symbols, trades, weekly_plans
+from routes import auth, export as export_route, factors, journal, psychology, settings as settings_route, stats, strategies, symbols, trades, weekly_plans, backtests
 app.include_router(auth.router)
 app.include_router(trades.router)
+app.include_router(backtests.router)
 app.include_router(factors.router)
 app.include_router(stats.router)
 app.include_router(journal.router)

@@ -1,15 +1,13 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Trash2, Search } from 'lucide-react'
-import { getTrades, deleteTrade } from '../api/trades'
-import { getBySymbol } from '../api/stats'
-import type { Trade, SymbolStat } from '../types'
+import { getBacktestTrades, deleteBacktestTrade, type BacktestTrade } from '../api/backtests'
 
-type SortField = 'date' | 'symbol' | 'pnl_pct' | 'rating' | 'rr'
+type SortField = 'date' | 'symbol' | 'pnl_pct' | 'rr'
 type SortDir = 'asc' | 'desc'
 
 interface Filters {
-  symbol: string; direction: string; result: string; rating: string
+  symbol: string; direction: string; result: string;
   from: string; to: string
 }
 
@@ -26,15 +24,14 @@ const resultBadgeClass = (result: string) =>
 
 export default function Backtests() {
   const navigate = useNavigate()
-  const [trades, setTrades] = useState<Trade[]>([])
-  const [stats, setStats] = useState<SymbolStat[]>([])
+  const [trades, setTrades] = useState<BacktestTrade[]>([])
   const [loading, setLoading] = useState(true)
   const [sortField, setSortField] = useState<SortField>('date')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
-  const [filters, setFilters] = useState<Filters>({ symbol: '', direction: '', result: '', rating: '', from: '', to: '' })
+  const [filters, setFilters] = useState<Filters>({ symbol: '', direction: '', result: '', from: '', to: '' })
 
   const apiFilters = useMemo(() => {
-    const f: any = { is_backtest: 'true' }
+    const f: any = {}
     if (filters.from) f.from = `${filters.from}T00:00:00`
     if (filters.to) f.to = `${filters.to}T23:59:59`
     return f
@@ -42,21 +39,32 @@ export default function Backtests() {
 
   useEffect(() => {
     setLoading(true)
-    Promise.all([
-      getTrades(apiFilters),
-      getBySymbol(apiFilters)
-    ]).then(([t, s]) => {
-      setTrades(t)
-      setStats(s)
-    }).finally(() => setLoading(false))
+    getBacktestTrades(apiFilters).then(t => setTrades(t)).finally(() => setLoading(false))
   }, [apiFilters])
+
+  const stats = useMemo(() => {
+    const map: Record<string, { total_trades: number, wins: number, total_pnl_pct: number }> = {}
+    trades.forEach(t => {
+      const sym = t.symbol.toLowerCase()
+      if (!map[sym]) map[sym] = { total_trades: 0, wins: 0, total_pnl_pct: 0 }
+      map[sym].total_trades++
+      map[sym].total_pnl_pct += t.pnl_pct
+      if (t.pnl_pct > 0) map[sym].wins++
+    })
+    return Object.entries(map).map(([symbol, data]) => ({
+      symbol: symbol.toUpperCase(),
+      total_trades: data.total_trades,
+      winrate: Math.round((data.wins / data.total_trades) * 100),
+      total_pnl_pct: data.total_pnl_pct,
+      avg_pnl_pct: data.total_pnl_pct / data.total_trades
+    }))
+  }, [trades])
 
   const filtered = useMemo(() => {
     return trades.filter(t => {
       if (filters.symbol && !t.symbol.toLowerCase().includes(filters.symbol.toLowerCase())) return false
       if (filters.direction && t.direction !== filters.direction) return false
       if (filters.result && t.result !== filters.result) return false
-      if (filters.rating && t.rating < Number(filters.rating)) return false
       return true
     })
   }, [trades, filters])
@@ -64,7 +72,7 @@ export default function Backtests() {
   const sorted = useMemo(() => {
     const arr = [...filtered]
     arr.sort((a, b) => {
-      const va = a[sortField], vb = b[sortField]
+      const va = a[sortField as keyof BacktestTrade], vb = b[sortField as keyof BacktestTrade]
       if (typeof va === 'number' && typeof vb === 'number') return sortDir === 'asc' ? va - vb : vb - va
       return sortDir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va))
     })
@@ -78,7 +86,7 @@ export default function Backtests() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this backtest trade?')) return
-    await deleteTrade(id)
+    await deleteBacktestTrade(id)
     setTrades(t => t.filter(x => x.id !== id))
   }
 

@@ -84,7 +84,6 @@ class TradeBase(BaseModel):
     screenshots: list[Screenshot] = []
     rating: int = 0
     trade_type: Optional[Literal["trend", "countertrend"]] = None
-    is_backtest: bool = False
     strategy_id: Optional[int] = None
 
     @field_validator("rating")
@@ -140,7 +139,6 @@ class TradeUpdate(BaseModel):
     screenshots: Optional[list[Screenshot]] = None
     rating: Optional[int] = None
     trade_type: Optional[Literal["trend", "countertrend"]] = None
-    is_backtest: Optional[bool] = None
     strategy_id: Optional[int] = None
     factor_ids: Optional[list[int]] = None
     pnl_pct: Optional[float] = None
@@ -160,6 +158,57 @@ class TradeUpdate(BaseModel):
 
 
 class TradeOut(TradeBase):
+    id: int
+    pnl_pct: float
+    factors: list[FactorOut] = []
+
+    model_config = {"from_attributes": True}
+
+
+# --- Backtest Trade ---
+
+class BacktestTradeBase(BaseModel):
+    symbol: str
+    direction: Direction
+    risk: float = 1.0
+    rr: float
+    result: Result
+    date: datetime
+    session: Session
+    psychology: list[str] = []
+    trade_type: Optional[Literal["trend", "countertrend"]] = None
+    strategy_id: Optional[int] = None
+
+    @field_validator("risk")
+    @classmethod
+    def risk_positive(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError("risk must be positive")
+        return v
+
+    @field_validator("rr")
+    @classmethod
+    def rr_positive(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError("rr must be positive")
+        return v
+
+class BacktestTradeCreate(BacktestTradeBase):
+    factor_ids: list[int] = []
+    psychology: Optional[list[str]] = None
+    pnl_pct: Optional[float] = None
+
+    @model_validator(mode="after")
+    def calc_pnl(self) -> "BacktestTradeCreate":
+        if self.result == Result.take:
+            self.pnl_pct = round(self.risk * self.rr, 4)
+        elif self.result == Result.stop:
+            self.pnl_pct = round(-self.risk, 4)
+        else:
+            self.pnl_pct = 0.0
+        return self
+
+class BacktestTradeOut(BacktestTradeBase):
     id: int
     pnl_pct: float
     factors: list[FactorOut] = []
