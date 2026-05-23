@@ -1,280 +1,183 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trash2, Search } from 'lucide-react'
-import { getBacktestTrades, deleteBacktestTrade, type BacktestTrade } from '../api/backtests'
+import { getBacktestSessions, deleteBacktestSession, createBacktestSession, type BacktestSession } from '../api/backtests'
+import { listStrategies } from '../api/strategies'
+import { getSymbols, createSymbol, type UserSymbol } from '../api/symbols'
+import type { Strategy } from '../types'
+import SymbolSelect from '../components/SymbolSelect'
+import { Trash2, Plus, Calendar, Target, Activity } from 'lucide-react'
 
-type SortField = 'date' | 'symbol' | 'pnl_pct' | 'rr'
-type SortDir = 'asc' | 'desc'
+const inputClass = "w-full h-10 px-3 bg-white border border-[#E2E8F0] rounded-lg text-sm font-medium text-[#0F172A] focus:outline-none focus:border-[#2563EB] transition-all"
 
-interface Filters {
-  symbol: string; direction: string; result: string;
-  from: string; to: string
+function Label({ children }: { children: React.ReactNode }) {
+  return <label className="block text-[11px] font-bold uppercase tracking-wider text-[#64748B] mb-2">{children}</label>
 }
-
-const fmt = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(2)}%`
-const resultLabel = (result: string) =>
-  result === 'take' ? 'Take Profit' : result === 'stop' ? 'Stop Loss' : result === 'open' ? 'Open' : 'Break Even'
-const resultShort = (result: string) =>
-  result === 'take' ? 'Take' : result === 'stop' ? 'Stop' : result === 'open' ? 'Open' : 'B/E'
-const resultBadgeClass = (result: string) =>
-  result === 'take' ? 'bg-green-50 border-green-100 text-[#059669]'
-    : result === 'stop' ? 'bg-red-50 border-red-100 text-[#DC2626]'
-    : result === 'open' ? 'bg-blue-50 border-blue-100 text-[#2563EB]'
-    : 'bg-amber-50 border-amber-100 text-[#D97706]'
 
 export default function Backtests() {
   const navigate = useNavigate()
-  const [trades, setTrades] = useState<BacktestTrade[]>([])
+  const [sessions, setSessions] = useState<BacktestSession[]>([])
+  const [strategies, setStrategies] = useState<Strategy[]>([])
+  const [symbolList, setSymbolList] = useState<UserSymbol[]>([])
   const [loading, setLoading] = useState(true)
-  const [sortField, setSortField] = useState<SortField>('date')
-  const [sortDir, setSortDir] = useState<SortDir>('desc')
-  const [filters, setFilters] = useState<Filters>({ symbol: '', direction: '', result: '', from: '', to: '' })
+  const [showModal, setShowModal] = useState(false)
 
-  const apiFilters = useMemo(() => {
-    const f: any = {}
-    if (filters.from) f.from = `${filters.from}T00:00:00`
-    if (filters.to) f.to = `${filters.to}T23:59:59`
-    return f
-  }, [filters.from, filters.to])
+  // Form State
+  const [name, setName] = useState('')
+  const [symbol, setSymbol] = useState('GER40')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [strategyId, setStrategyId] = useState<number | null>(null)
+  const [submitting, setSub] = useState(false)
 
   useEffect(() => {
     setLoading(true)
-    getBacktestTrades(apiFilters).then(t => setTrades(t)).finally(() => setLoading(false))
-  }, [apiFilters])
+    Promise.all([
+      getBacktestSessions(),
+      listStrategies(),
+      getSymbols()
+    ]).then(([sess, strats, syms]) => {
+      setSessions(sess)
+      setStrategies(strats.filter(s => s.status === 'active'))
+      setSymbolList(syms)
+    }).finally(() => setLoading(false))
+  }, [])
 
-  const stats = useMemo(() => {
-    const map: Record<string, { total_trades: number, wins: number, total_pnl_pct: number }> = {}
-    trades.forEach(t => {
-      const sym = t.symbol.toLowerCase()
-      if (!map[sym]) map[sym] = { total_trades: 0, wins: 0, total_pnl_pct: 0 }
-      map[sym].total_trades++
-      map[sym].total_pnl_pct += t.pnl_pct
-      if (t.pnl_pct > 0) map[sym].wins++
-    })
-    return Object.entries(map).map(([symbol, data]) => ({
-      symbol: symbol.toUpperCase(),
-      total_trades: data.total_trades,
-      winrate: Math.round((data.wins / data.total_trades) * 100),
-      total_pnl_pct: data.total_pnl_pct,
-      avg_pnl_pct: data.total_pnl_pct / data.total_trades
-    }))
-  }, [trades])
-
-  const filtered = useMemo(() => {
-    return trades.filter(t => {
-      if (filters.symbol && !t.symbol.toLowerCase().includes(filters.symbol.toLowerCase())) return false
-      if (filters.direction && t.direction !== filters.direction) return false
-      if (filters.result && t.result !== filters.result) return false
-      return true
-    })
-  }, [trades, filters])
-
-  const sorted = useMemo(() => {
-    const arr = [...filtered]
-    arr.sort((a, b) => {
-      const va = a[sortField as keyof BacktestTrade], vb = b[sortField as keyof BacktestTrade]
-      if (typeof va === 'number' && typeof vb === 'number') return sortDir === 'asc' ? va - vb : vb - va
-      return sortDir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va))
-    })
-    return arr
-  }, [filtered, sortField, sortDir])
-
-  const toggleSort = (f: SortField) => {
-    if (sortField === f) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
-    else { setSortField(f); setSortDir('desc') }
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSub(true)
+    try {
+      const s = await createBacktestSession({ name, symbol, start_date: startDate, end_date: endDate, strategy_id: strategyId })
+      setSessions([s, ...sessions])
+      setShowModal(false)
+      setName('')
+      setStartDate('')
+      setEndDate('')
+    } catch (err) {
+      alert("Failed to create session")
+    } finally {
+      setSub(false)
+    }
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Delete this backtest trade?')) return
-    await deleteBacktestTrade(id)
-    setTrades(t => t.filter(x => x.id !== id))
+  const handleDelete = async (e: React.MouseEvent, id: number) => {
+    e.stopPropagation()
+    if (!confirm('Delete this session and ALL its trades?')) return
+    await deleteBacktestSession(id)
+    setSessions(s => s.filter(x => x.id !== id))
   }
-
-  const SortBtn = ({ field, label, className = '' }: { field: SortField; label: string; className?: string }) => (
-    <button onClick={() => toggleSort(field)} className={`inline-flex items-center gap-1 hover:text-[#0F172A] ${className}`}>
-      {label} {sortField === field && <span className="text-[#2563EB]">{sortDir === 'asc' ? '▲' : '▼'}</span>}
-    </button>
-  )
-
-  const activeStat = filters.symbol ? stats.find(s => s.symbol.toLowerCase() === filters.symbol.toLowerCase()) : null
 
   return (
-    <div>
-      <div className="flex flex-col md:flex-row md:justify-between md:items-end mb-6 gap-4">
+    <div className="max-w-5xl mx-auto pb-12">
+      <div className="mb-8 flex flex-col md:flex-row md:justify-between md:items-end gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-[#0F172A] tracking-tight">Backtests Journal</h2>
-          <p className="text-sm font-medium text-[#64748B] mt-1">{sorted.length} backtest records</p>
+          <h2 className="text-2xl font-bold text-[#0F172A] tracking-tight">Backtest Sessions</h2>
+          <p className="text-sm font-medium text-[#64748B] mt-1">Организуйте тесты по инструментам и датам</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={() => navigate('/backtests/new')} className="px-4 py-2 bg-purple-600 text-white text-xs font-semibold rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-1.5" style={{ boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }}>
-            <span className="text-base leading-none">⚡</span> Fast Entry
-          </button>
-        </div>
+        <button onClick={() => setShowModal(true)} className="px-5 py-2.5 bg-purple-600 text-white text-sm font-semibold rounded-xl hover:bg-purple-700 transition-all flex items-center gap-2 shadow-sm shadow-purple-600/20 active:scale-95">
+          <Plus size={16} /> Создать сессию
+        </button>
       </div>
 
-      {activeStat && (
-        <div className="mb-6 grid grid-cols-4 gap-4 p-5 bg-white border border-purple-100 rounded-2xl shadow-sm">
-          <div>
-            <div className="text-[10px] uppercase font-bold text-[#64748B] tracking-wider mb-1">Asset</div>
-            <div className="text-xl font-bold text-[#0F172A]">{activeStat.symbol}</div>
+      {loading ? (
+        <div className="p-12 text-center text-[#64748B]">Loading sessions...</div>
+      ) : sessions.length === 0 ? (
+        <div className="p-16 text-center bg-white rounded-3xl border border-[#F1F5F9] shadow-sm flex flex-col items-center">
+          <div className="w-16 h-16 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-600 mb-4">
+            <Activity size={28} />
           </div>
-          <div>
-            <div className="text-[10px] uppercase font-bold text-[#64748B] tracking-wider mb-1">Trades</div>
-            <div className="text-xl font-bold text-[#0F172A]">{activeStat.total_trades}</div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase font-bold text-[#64748B] tracking-wider mb-1">Winrate</div>
-            <div className="text-xl font-bold text-[#0F172A]">{activeStat.winrate}%</div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase font-bold text-[#64748B] tracking-wider mb-1">Total PnL</div>
-            <div className={`text-xl font-bold font-mono ${activeStat.total_pnl_pct > 0 ? 'text-[#059669]' : 'text-[#DC2626]'}`}>
-              {activeStat.total_pnl_pct > 0 ? '+' : ''}{activeStat.total_pnl_pct.toFixed(2)}%
-            </div>
-          </div>
+          <h3 className="text-lg font-bold text-[#0F172A] mb-2">У вас еще нет сессий бэктеста</h3>
+          <p className="text-sm text-[#64748B] max-w-md mx-auto mb-6">
+            Создайте свою первую сессию, чтобы начать быстро логировать сделки и собирать независимую статистику.
+          </p>
+          <button onClick={() => setShowModal(true)} className="px-5 py-2.5 bg-purple-600 text-white text-sm font-semibold rounded-xl hover:bg-purple-700 transition-all shadow-sm">
+            Создать сессию
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {sessions.map(s => {
+            const st = strategies.find(x => x.id === s.strategy_id)
+            return (
+              <div key={s.id} onClick={() => navigate(`/backtests/${s.id}`)}
+                className="bg-white rounded-2xl border border-[#F1F5F9] p-5 shadow-sm hover:shadow-md hover:border-purple-200 cursor-pointer transition-all group">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center font-bold text-xs text-[#0F172A]">{s.symbol.slice(0, 2)}</div>
+                    <div className="font-bold text-[#0F172A] text-lg">{s.name}</div>
+                  </div>
+                  <button onClick={e => handleDelete(e, s.id)} className="p-1.5 rounded-md text-[#94A3B8] opacity-0 group-hover:opacity-100 hover:text-[#DC2626] hover:bg-red-50 transition-all">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+                
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center gap-2 text-sm text-[#64748B]">
+                    <Target size={14} />
+                    <span className="font-medium text-[#0F172A]">{s.symbol}</span>
+                    {st && <span className="text-xs px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 font-semibold">{st.name}</span>}
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-[#64748B]">
+                    <Calendar size={14} />
+                    <span>{s.start_date} &rarr; {s.end_date}</span>
+                  </div>
+                </div>
+                
+                <div className="pt-3 border-t border-[#F1F5F9] flex justify-between items-center text-xs font-semibold text-purple-600">
+                  <span>Открыть лабораторию</span>
+                  <span>&rarr;</span>
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-[#F1F5F9] overflow-hidden flex flex-col" style={{ boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)' }}>
-
-        {/* Filters Row */}
-        <div className="p-3 border-b border-[#F1F5F9] flex flex-wrap gap-2 items-center bg-gray-50/50">
-          <div className="relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
-            <input value={filters.symbol} onChange={e => setFilters(f => ({ ...f, symbol: e.target.value }))}
-              placeholder="Search symbol for stats..." className="h-9 pl-9 pr-3 bg-white border border-[#E2E8F0] rounded-lg text-xs w-56 focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] text-[#0F172A]" />
-          </div>
-
-          <select value={filters.direction} onChange={e => setFilters(f => ({ ...f, direction: e.target.value }))}
-            className="h-9 pl-3 pr-8 bg-white border border-[#E2E8F0] rounded-lg text-xs font-medium text-[#0F172A] focus:outline-none cursor-pointer">
-            <option value="">All Directions</option><option value="long">Long</option><option value="short">Short</option>
-          </select>
-
-          <select value={filters.result} onChange={e => setFilters(f => ({ ...f, result: e.target.value }))}
-            className="h-9 pl-3 pr-8 bg-white border border-[#E2E8F0] rounded-lg text-xs font-medium text-[#0F172A] focus:outline-none cursor-pointer">
-            <option value="">All Results</option><option value="take">Take</option><option value="stop">Stop</option><option value="b/e">B/E</option>
-          </select>
-        </div>
-
-        {loading ? (
-          <div className="p-12 text-center text-[#64748B]">Loading...</div>
-        ) : sorted.length === 0 ? (
-          <div className="p-12 text-center text-[#94A3B8]">No backtest trades found</div>
-        ) : (
-          <>
-          <div className="space-y-3 p-3 md:hidden">
-            {sorted.map(t => {
-              const dt = new Date(t.date + 'Z')
-              const isWin = t.pnl_pct > 0
-              const isLoss = t.pnl_pct < 0
-              const pnlClass = isWin ? 'text-[#059669]' : isLoss ? 'text-[#DC2626]' : 'text-[#64748B]'
-              const resultClass = resultBadgeClass(t.result)
-              return (
-                <div key={t.id}
-                  className="rounded-2xl border border-[#F1F5F9] bg-white p-4 shadow-sm">
-                  <div className="mb-3 flex items-start justify-between gap-3">
-                    <div>
-                      <div className="font-bold text-[#0F172A]">{t.symbol}</div>
-                      <div className="mt-0.5 text-xs font-medium text-[#64748B]">
-                        {dt.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} • {dt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className={`font-mono text-lg font-bold ${pnlClass}`}>{t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}</div>
-                    </div>
-                  </div>
-                  <div className="mb-3 flex flex-wrap gap-2">
-                    <span className="rounded-lg bg-gray-100 px-2 py-1 text-[11px] font-bold capitalize text-gray-700">{t.direction}</span>
-                    <span className={`rounded-lg border px-2 py-1 text-[11px] font-bold ${resultClass}`}>{resultShort(t.result)}</span>
-                    <span className="rounded-lg bg-gray-100 px-2 py-1 text-[11px] font-bold text-gray-700">{t.risk}% risk / 1:{t.rr}</span>
-                  </div>
-                  <div className="flex items-center justify-end border-t border-[#F1F5F9] pt-3">
-                    <button onClick={e => { e.stopPropagation(); handleDelete(t.id) }} className="inline-flex items-center gap-1 text-xs font-bold text-[#DC2626]"><Trash2 size={13} /> Delete</button>
-                  </div>
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-2xl relative">
+            <h3 className="text-xl font-bold text-[#0F172A] mb-1">Новая сессия</h3>
+            <p className="text-sm text-[#64748B] mb-6">Задайте параметры для нового бэктеста</p>
+            
+            <form onSubmit={handleCreate} className="space-y-5">
+              <div>
+                <Label>Название сессии</Label>
+                <input required type="text" placeholder="Например: Пробой Азии 2024" value={name} onChange={e => setName(e.target.value)} className={inputClass} />
+              </div>
+              <div>
+                <Label>Инструмент (Symbol)</Label>
+                <SymbolSelect
+                  value={symbol} onChange={setSymbol} options={symbolList}
+                  preferred={[]}
+                  onCreate={async (n) => { const s = await createSymbol(n); setSymbolList(p => [...p, s]); return s }}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Start Date</Label>
+                  <input required type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={inputClass} />
                 </div>
-              )
-            })}
+                <div>
+                  <Label>End Date</Label>
+                  <input required type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className={inputClass} />
+                </div>
+              </div>
+              <div>
+                <Label>Привязка к Стратегии (Опционально)</Label>
+                <select value={strategyId ?? ''} onChange={e => setStrategyId(e.target.value ? Number(e.target.value) : null)} className={`${inputClass} cursor-pointer`}>
+                  <option value="">— Без стратегии —</option>
+                  {strategies.map(s => <option key={s.id} value={s.id}>{s.emoji} {s.name}</option>)}
+                </select>
+              </div>
+              <div className="pt-2 flex gap-3">
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2.5 bg-white border border-[#E2E8F0] text-[#0F172A] text-sm font-semibold rounded-xl hover:bg-gray-50 transition-all">Отмена</button>
+                <button type="submit" disabled={submitting} className="flex-1 py-2.5 bg-purple-600 text-white text-sm font-semibold rounded-xl hover:bg-purple-700 disabled:opacity-50 transition-all shadow-md shadow-purple-600/20">
+                  {submitting ? 'Создание...' : 'Создать'}
+                </button>
+              </div>
+            </form>
           </div>
-          <div className="hidden overflow-x-auto md:block">
-            <table className="w-full text-left border-collapse whitespace-nowrap min-w-[900px]">
-              <thead className="bg-white border-b border-[#F1F5F9]">
-                <tr>
-                  <th className="px-5 py-3.5 text-[11px] font-bold text-[#64748B] uppercase tracking-wider"><SortBtn field="symbol" label="Asset & Time" /></th>
-                  <th className="px-5 py-3.5 text-[11px] font-bold text-[#64748B] uppercase tracking-wider">Setup</th>
-                  <th className="px-5 py-3.5 text-[11px] font-bold text-[#64748B] uppercase tracking-wider"><SortBtn field="rr" label="Metrics (Risk / RR)" /></th>
-                  <th className="px-5 py-3.5 text-[11px] font-bold text-[#64748B] uppercase tracking-wider">Context & Tags</th>
-                  <th className="px-5 py-3.5 text-[11px] font-bold text-[#64748B] uppercase tracking-wider text-right"><SortBtn field="pnl_pct" label="Result PnL" className="ml-auto" /></th>
-                  <th className="px-3 py-3.5"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.map(t => {
-                  const dt = new Date(t.date + 'Z')
-                  const dirColor = t.direction === 'long' ? 'text-[#059669]' : 'text-[#DC2626]'
-                  const isWin = t.pnl_pct > 0
-                  const isLoss = t.pnl_pct < 0
-                  const resultClass = resultBadgeClass(t.result)
-                  const resultText = resultLabel(t.result)
-                  const pnlClass = isWin ? 'text-[#059669]' : isLoss ? 'text-[#DC2626]' : 'text-[#64748B]'
-                  return (
-                    <tr key={t.id} className="border-b border-[#F1F5F9]/60 hover:bg-gray-50/80 transition-colors group">
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center font-bold text-xs text-[#0F172A]">{t.symbol.slice(0, 2)}</div>
-                          <div>
-                            <div className="font-bold text-sm text-[#0F172A]">{t.symbol}</div>
-                            <div className="text-[11px] text-[#64748B] font-medium">
-                              {dt.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} • {dt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-2">
-                            <span className={`text-[11px] font-bold ${dirColor}`}>{t.direction === 'long' ? 'Long' : 'Short'}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex flex-col gap-1">
-                          <div className="text-sm font-mono text-[#0F172A] font-medium">{t.risk}% <span className="text-[10px] text-[#64748B] font-sans ml-1 uppercase tracking-widest font-bold">Risk</span></div>
-                          <div className="text-sm font-mono text-[#0F172A] font-medium">1:{t.rr} <span className="text-[10px] text-[#64748B] font-sans ml-1 uppercase tracking-widest font-bold">RR</span></div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex flex-wrap gap-1.5 max-w-[280px]">
-                          {t.psychology.slice(0, 2).map(p => {
-                            const isGood = p.toLowerCase().includes('систем')
-                            const cls = isGood ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'
-                            return <span key={p} className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${cls}`}>{p.split('/')[0].trim()}</span>
-                          })}
-                          {t.factors.slice(0, 2).map(f => (
-                            <span key={f.id} className="px-2 py-0.5 rounded-md text-[10px] font-bold border bg-gray-100 text-gray-700 border-gray-200">{f.name}</span>
-                          ))}
-                          {(t.psychology.length + t.factors.length) > 4 && <span className="text-[11px] text-[#94A3B8]">+{t.psychology.length + t.factors.length - 4}</span>}
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5 text-right">
-                        <div className="flex flex-col items-end gap-1">
-                          <div className={`font-mono text-lg font-bold ${pnlClass}`}>{t.result === 'b/e' ? '0.00%' : fmt(t.pnl_pct)}</div>
-                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest border ${resultClass}`}>{resultText}</span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-3.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="flex gap-1">
-                          <button onClick={e => { e.stopPropagation(); handleDelete(t.id) }} className="p-1.5 rounded-md hover:bg-red-50 text-[#64748B] hover:text-[#DC2626] transition-colors"><Trash2 size={14} /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-          </>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
