@@ -79,6 +79,7 @@ class BacktestSession(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String, nullable=False)
     strategy_id = Column(Integer, ForeignKey("strategies.id", ondelete="SET NULL"), nullable=True)
     symbol = Column(String, nullable=False)
     start_date = Column(String, nullable=False)
