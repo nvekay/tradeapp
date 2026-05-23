@@ -1,11 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Trash2, Pencil, Search } from 'lucide-react'
+import { Trash2, Search } from 'lucide-react'
 import { getTrades, deleteTrade } from '../api/trades'
 import { getBySymbol } from '../api/stats'
-import { useSettings, fmtMoney } from '../contexts/SettingsContext'
 import type { Trade, SymbolStat } from '../types'
-import OpenPendingBadge from '../components/OpenPendingBadge'
 
 type SortField = 'date' | 'symbol' | 'pnl_pct' | 'rating' | 'rr'
 type SortDir = 'asc' | 'desc'
@@ -28,7 +26,6 @@ const resultBadgeClass = (result: string) =>
 
 export default function Backtests() {
   const navigate = useNavigate()
-  const { settings } = useSettings()
   const [trades, setTrades] = useState<Trade[]>([])
   const [stats, setStats] = useState<SymbolStat[]>([])
   const [loading, setLoading] = useState(true)
