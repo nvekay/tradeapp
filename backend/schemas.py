@@ -165,10 +165,29 @@ class TradeOut(TradeBase):
     model_config = {"from_attributes": True}
 
 
+# --- Backtest Session ---
+
+class BacktestSessionBase(BaseModel):
+    name: str
+    symbol: str
+    start_date: str
+    end_date: str
+    strategy_id: Optional[int] = None
+
+class BacktestSessionCreate(BacktestSessionBase):
+    pass
+
+class BacktestSessionOut(BacktestSessionBase):
+    id: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 # --- Backtest Trade ---
 
 class BacktestTradeBase(BaseModel):
-    symbol: str
+    backtest_session_id: int
     direction: Direction
     risk: float = 1.0
     rr: float
@@ -177,7 +196,6 @@ class BacktestTradeBase(BaseModel):
     session: Session
     psychology: list[str] = []
     trade_type: Optional[Literal["trend", "countertrend"]] = None
-    strategy_id: Optional[int] = None
 
     @field_validator("risk")
     @classmethod

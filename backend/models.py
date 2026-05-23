@@ -74,11 +74,27 @@ class BacktestTradeFactors(Base):
     backtest_trade_id = Column(Integer, ForeignKey("backtest_trades.id", ondelete="CASCADE"), primary_key=True)
     factor_id = Column(Integer, ForeignKey("factors.id", ondelete="CASCADE"), primary_key=True)
 
+class BacktestSession(Base):
+    __tablename__ = "backtest_sessions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    strategy_id = Column(Integer, ForeignKey("strategies.id", ondelete="SET NULL"), nullable=True)
+    symbol = Column(String, nullable=False)
+    start_date = Column(String, nullable=False)
+    end_date = Column(String, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User")
+    strategy = relationship("Strategy")
+    trades = relationship("BacktestTrade", back_populates="session_rel", cascade="all, delete-orphan")
+
+
 class BacktestTrade(Base):
     __tablename__ = "backtest_trades"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    symbol = Column(String, nullable=False)
+    backtest_session_id = Column(Integer, ForeignKey("backtest_sessions.id", ondelete="CASCADE"), nullable=False)
     direction = Column(String, nullable=False)       # "long" | "short"
     risk = Column(Float, nullable=False, default=1.0)
     rr = Column(Float, nullable=False)
@@ -89,10 +105,9 @@ class BacktestTrade(Base):
     psychology = Column(JSON, nullable=False, default=list)
     trade_type = Column(String, nullable=True)  # "trend" | "countertrend"
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
-    strategy_id = Column(Integer, ForeignKey("strategies.id", ondelete="SET NULL"), nullable=True)
 
     user = relationship("User")
-    strategy = relationship("Strategy")
+    session_rel = relationship("BacktestSession", back_populates="trades")
     factors = relationship("Factor", secondary="backtest_trade_factors")
 
 
