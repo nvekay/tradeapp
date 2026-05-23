@@ -17,7 +17,13 @@ with engine.connect() as conn:
             conn.execute(text("ALTER TABLE trades ADD COLUMN " + col + " " + ddl))
             conn.commit()
         except Exception:
-            pass
+            conn.rollback()
+
+    try:
+        conn.execute(text("ALTER TABLE backtest_sessions ADD COLUMN name VARCHAR DEFAULT 'Session' NOT NULL"))
+        conn.commit()
+    except Exception:
+        conn.rollback()
 
 # Auto-seed admin user from env vars (runs every startup, keeps password in sync)
 _ADMIN_EMAIL    = os.getenv("ADMIN_EMAIL")
