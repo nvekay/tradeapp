@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, List, PlusCircle, Brain, Settings, ClipboardList, BookOpen, LogOut, Target, Menu, X, CalendarDays, TestTube2 } from 'lucide-react'
+import { LayoutDashboard, List, PlusCircle, Brain, Settings, BookOpen, LogOut, Target, Menu, X, CalendarDays, TestTube2 } from 'lucide-react'
 
 const navItems = [
   { to: '/app',       icon: LayoutDashboard, end: true },
   { to: '/trades',    icon: List,            end: false },
   { to: '/add',       icon: PlusCircle,      end: false },
-  { to: '/checklist', icon: ClipboardList,   end: false },
   { to: '/calendar',  icon: CalendarDays,    end: false },
   { to: '/journal',   icon: BookOpen,        end: false },
   { to: '/strategies', icon: Target,         end: false },

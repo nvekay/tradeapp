@@ -7,7 +7,6 @@ import Backtests from './pages/Backtests'
 import BacktestSessionDetail from './pages/BacktestSessionDetail'
 import AddTrade from './pages/AddTrade'
 import News from './pages/News'
-import Checklist from './pages/Checklist'
 import Journal from './pages/Journal'
 import Calendar from './pages/Calendar'
 import Strategies from './pages/Strategies'
@@ -42,7 +41,6 @@ export default function App() {
             <Route path="/add" element={<AddTrade />} />
             <Route path="/edit/:id" element={<AddTrade />} />
             <Route path="/news" element={<News />} />
-            <Route path="/checklist" element={<Checklist />} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/journal" element={<Journal />} />
             <Route path="/strategies" element={<Strategies />} />
