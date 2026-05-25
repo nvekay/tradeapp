@@ -77,6 +77,7 @@ class TradeBase(BaseModel):
     date: datetime
     session: Session
     notes: Optional[str] = None
+    closed_at: Optional[datetime] = None
     screenshot_5m: Optional[str] = None
     screenshot_1h: Optional[str] = None
     screenshot_4h: Optional[str] = None
@@ -142,6 +143,7 @@ class TradeUpdate(BaseModel):
     strategy_id: Optional[int] = None
     factor_ids: Optional[list[int]] = None
     pnl_pct: Optional[float] = None
+    closed_at: Optional[datetime] = None
 
     @model_validator(mode="after")
     def recalc_pnl(self) -> "TradeUpdate":
@@ -301,6 +303,8 @@ class StrategyBase(BaseModel):
     is_default: bool = False
     sl_logic: Optional[str] = None
     tp_logic: Optional[str] = None
+    timeframes: list[str] = []
+    notes: Optional[str] = None
 
 
 class StrategyCreate(StrategyBase):
@@ -323,6 +327,8 @@ class StrategyUpdate(BaseModel):
     is_default: Optional[bool] = None
     sl_logic: Optional[str] = None
     tp_logic: Optional[str] = None
+    timeframes: Optional[list[str]] = None
+    notes: Optional[str] = None
 
 
 class StrategyOut(StrategyBase):

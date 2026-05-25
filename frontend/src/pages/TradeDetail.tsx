@@ -8,6 +8,18 @@ import { fmtMoney, useSettings } from '../contexts/SettingsContext'
 import type { Screenshot, Strategy, Trade } from '../types'
 import OpenPendingBadge from '../components/OpenPendingBadge'
 
+function fmtDuration(openDate: string, closedAt: string | null | undefined): string | null {
+  if (!closedAt) return null
+  const ms = new Date(closedAt + (closedAt.endsWith('Z') ? '' : 'Z')).getTime() - new Date(openDate + 'Z').getTime()
+  if (ms <= 0) return null
+  const totalMin = Math.floor(ms / 60000)
+  const days = Math.floor(totalMin / 1440)
+  const hours = Math.floor((totalMin % 1440) / 60)
+  const mins = totalMin % 60
+  if (days > 0) return `${days}d ${hours}h ${mins}m`
+  if (hours > 0) return `${hours}h ${mins}m`
+  return `${mins}m`
+}
 function fmtPct(v: number) { return `${v > 0 ? '+' : ''}${v.toFixed(2)}%` }
 function pnlClass(v: number) { return v > 0 ? 'text-[#059669]' : v < 0 ? 'text-[#DC2626]' : 'text-[#64748B]' }
 function resultLabel(result: string) {
@@ -116,6 +128,21 @@ export default function TradeDetail() {
                 {settings && trade.result !== 'open' && <div className={`font-mono text-xs font-semibold ${pnlClass(pnl)}`}>{fmtMoney(pnl, settings.account_size, settings.currency)}</div>}
               </div>
             </div>
+            {trade.result !== 'open' && (trade as any).closed_at && (
+              <div className="mt-4 grid gap-4 border-t border-[#F1F5F9] pt-4 sm:grid-cols-2">
+                {fmtDuration(trade.date, (trade as any).closed_at) && (
+                  <div>
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">Duration</div>
+                    <div className="mt-1 font-mono text-lg font-bold">{fmtDuration(trade.date, (trade as any).closed_at)}</div>
+                  </div>
+                )}
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">Closed at</div>
+                  <div className="mt-1 text-sm font-semibold">{new Date((trade as any).closed_at + 'Z').toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                  <div className="text-xs text-[#64748B]">{new Date((trade as any).closed_at + 'Z').toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="rounded-2xl border border-[#F1F5F9] bg-white p-5 shadow-sm">
@@ -136,7 +163,7 @@ export default function TradeDetail() {
                 {screenshots.map(ss => (
                   <button key={`${ss.label}-${ss.url}`} type="button" onClick={() => setLightbox(ss)}
                     className="group overflow-hidden rounded-2xl border border-[#E2E8F0] bg-gray-50 text-left transition-all hover:-translate-y-0.5 hover:shadow-md">
-                    <img src={imageUrl(ss.url)} alt={ss.label || 'screenshot'} className="h-56 w-full object-cover" />
+                    <img src={imageUrl(ss.url)} alt={ss.label || 'screenshot'} className="h-56 w-full object-contain bg-gray-50" />
                     <div className="flex items-center justify-between px-4 py-3">
                       <span className="text-xs font-bold uppercase tracking-wider text-[#64748B]">{ss.label || 'Screenshot'}</span>
                       <ExternalLink size={14} className="text-[#94A3B8] group-hover:text-[#2563EB]" />

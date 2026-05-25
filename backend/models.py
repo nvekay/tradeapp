@@ -60,6 +60,7 @@ class Trade(Base):
     psychology = Column(JSON, nullable=False, default=list)
     screenshots = Column(JSON, nullable=False, default=list)  # [{label, url}, ...]
     rating = Column(Integer, nullable=False, default=0)
+    closed_at = Column(DateTime, nullable=True)
     trade_type = Column(String, nullable=True)  # "trend" | "countertrend"
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     strategy_id = Column(Integer, ForeignKey("strategies.id", ondelete="SET NULL"), nullable=True)
@@ -158,6 +159,8 @@ class Strategy(Base):
     max_risk_pct = Column(Float, nullable=False, default=1.0)
     min_rr = Column(Float, nullable=False, default=1.5)
     setup_checklist = Column(JSON, nullable=False, default=list)
+    timeframes = Column(JSON, nullable=False, default=list)
+    notes = Column(Text, nullable=True)
     sl_logic = Column(Text, nullable=True)
     tp_logic = Column(Text, nullable=True)
     is_default = Column(Boolean, nullable=False, default=False)

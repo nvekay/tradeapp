@@ -12,9 +12,19 @@ models.Base.metadata.create_all(bind=engine)
 # migrations
 from sqlalchemy import text
 with engine.connect() as conn:
-    for col, ddl in [("trade_type", "TEXT")]:
+    for col, ddl in [("trade_type", "TEXT"), ("closed_at", "TIMESTAMP")]:
         try:
             conn.execute(text("ALTER TABLE trades ADD COLUMN " + col + " " + ddl))
+            conn.commit()
+        except Exception:
+            conn.rollback()
+
+    for col, ddl in [
+        ("timeframes", "JSON DEFAULT '[]'"),
+        ("notes", "TEXT"),
+    ]:
+        try:
+            conn.execute(text("ALTER TABLE strategies ADD COLUMN " + col + " " + ddl))
             conn.commit()
         except Exception:
             conn.rollback()

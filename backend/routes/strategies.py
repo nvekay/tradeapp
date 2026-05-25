@@ -42,6 +42,8 @@ def _to_out(strategy: Strategy, db: Session) -> dict:
         "setup_checklist": strategy.setup_checklist or [],
         "sl_logic": strategy.sl_logic,
         "tp_logic": strategy.tp_logic,
+        "timeframes": getattr(strategy, "timeframes", None) or [],
+        "notes": getattr(strategy, "notes", None),
         "is_default": getattr(strategy, "is_default", False),
         "created_at": strategy.created_at,
         "updated_at": strategy.updated_at,

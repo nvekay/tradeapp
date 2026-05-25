@@ -40,8 +40,8 @@ export default function AddTrade() {
 
   const [symbol, setSymbol] = useState('GER40')
   const [direction, setDir] = useState<Direction>('long')
-  const [risk, setRisk] = useState(1.0)
-  const [rr, setRr] = useState(2.0)
+  const [risk, setRisk] = useState('1')
+  const [rr, setRr] = useState('2')
   const [result, setResult] = useState<TradeResult>('take')
   const [date, setDate] = useState(() => dateParam ? `${dateParam}T12:00` : toLocalInput(new Date()))
   const [session, setSession] = useState<Session>('london')
@@ -83,7 +83,7 @@ export default function AddTrade() {
   useEffect(() => {
     if (!id) return
     getTrade(Number(id)).then(t => {
-      setSymbol(t.symbol); setDir(t.direction); setRisk(t.risk); setRr(t.rr)
+      setSymbol(t.symbol); setDir(t.direction); setRisk(String(t.risk)); setRr(String(t.rr))
       setResult(t.result); setDate(toLocalInput(new Date(t.date + 'Z'))); setSession(t.session)
       setNotes(t.notes ?? '')
       const ss = (t as { screenshots?: Screenshot[] }).screenshots
@@ -105,7 +105,7 @@ export default function AddTrade() {
   useEffect(() => {
     if (!duplicateId || id) return
     getTrade(Number(duplicateId)).then(t => {
-      setSymbol(t.symbol); setDir(t.direction); setRisk(t.risk); setRr(t.rr)
+      setSymbol(t.symbol); setDir(t.direction); setRisk(String(t.risk)); setRr(String(t.rr))
       setResult(t.result); setDate(toLocalInput(new Date())); setSession(t.session)
       setNotes(''); setScreenshots([])
       setPsych(t.psychology); setFids(t.factors.map(f => f.id)); setRating(t.rating)
@@ -122,8 +122,10 @@ export default function AddTrade() {
   }, [psyList, psychology])
 
   const pnlPreview = useMemo(() => {
-    if (result === 'take') return +(risk * rr).toFixed(4)
-    if (result === 'stop') return -risk
+    const r = parseFloat(risk) || 0
+    const rr_ = parseFloat(rr) || 0
+    if (result === 'take') return +(r * rr_).toFixed(4)
+    if (result === 'stop') return -r
     return 0
   }, [risk, rr, result])
 
@@ -154,7 +156,7 @@ export default function AddTrade() {
 
     try {
       const payload = {
-        symbol, direction, risk, rr, result, date: new Date(finalDate).toISOString(),
+        symbol, direction, risk: parseFloat(risk) || 0.01, rr: parseFloat(rr) || 0.01, result, date: new Date(finalDate).toISOString(),
         session, notes: notes || undefined,
         screenshots,
         psychology, factor_ids: factorIds, rating, trade_type: tradeType || undefined,
@@ -169,7 +171,7 @@ export default function AddTrade() {
         if (keepOpen) {
           // Reset only result, RR, and rating for fast entry
           setResult('take')
-          setRr(2.0)
+          setRr('2')
           setRating(0)
           // Flash a success message or just quietly reset
         } else {
@@ -299,11 +301,11 @@ export default function AddTrade() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <Label>Risk %</Label>
-              <input type="number" step="0.01" min="0.01" required value={risk} onChange={e => setRisk(Number(e.target.value))} className={`${inputClass} font-mono`} />
+              <input type="text" inputMode="decimal" placeholder="1" required value={risk} onChange={e => { const v = e.target.value; if (v === '' || /^\d*\.?\d*$/.test(v)) setRisk(v) }} className={`${inputClass} font-mono`} />
             </div>
             <div>
               <Label>RR</Label>
-              <input type="number" step="0.01" min="0.01" required value={rr} onChange={e => setRr(Number(e.target.value))} className={`${inputClass} font-mono`} />
+              <input type="text" inputMode="decimal" placeholder="2" required value={rr} onChange={e => { const v = e.target.value; if (v === '' || /^\d*\.?\d*$/.test(v)) setRr(v) }} className={`${inputClass} font-mono`} />
             </div>
             <div>
               <Label>PnL Preview</Label>

@@ -164,6 +164,23 @@ def update_trade(trade_id: int, payload: TradeUpdate, current_user: User = Depen
         setattr(trade, field, value)
     if factor_ids is not None:
         trade.factors = _resolve_factors(db, factor_ids, current_user)
+    # Auto-manage closed_at based on result
+    if "result" in update_data:
+        new_result = update_data["result"]
+        if new_result == "open":
+            trade.closed_at = None
+        elif trade.closed_at is None:
+            from datetime import timezone as _tz
+            trade.closed_at = datetime.now(_tz.utc)
+    # Recalculate pnl_pct when result/risk/rr changes
+    if any(k in update_data for k in ("result", "risk", "rr")):
+        r = trade.result
+        if r == "take":
+            trade.pnl_pct = round(trade.risk * trade.rr, 4)
+        elif r == "stop":
+            trade.pnl_pct = round(-trade.risk, 4)
+        else:
+            trade.pnl_pct = 0.0
     db.commit()
     db.refresh(trade)
     return trade
