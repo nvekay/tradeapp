@@ -129,17 +129,25 @@ export default function TradeDetail() {
               </div>
             </div>
             {trade.result !== 'open' && (trade as any).closed_at && (
-              <div className="mt-4 grid gap-4 border-t border-[#F1F5F9] pt-4 sm:grid-cols-2">
+              <div className="mt-4 flex flex-wrap gap-3 border-t border-[#F1F5F9] pt-4">
                 {fmtDuration(trade.date, (trade as any).closed_at) && (
-                  <div>
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">Duration</div>
-                    <div className="mt-1 font-mono text-lg font-bold">{fmtDuration(trade.date, (trade as any).closed_at)}</div>
+                  <div className="flex items-center gap-2 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] px-4 py-2.5">
+                    <span className="text-base">⏱</span>
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Duration</div>
+                      <div className="font-mono text-sm font-bold text-[#0F172A]">{fmtDuration(trade.date, (trade as any).closed_at)}</div>
+                    </div>
                   </div>
                 )}
-                <div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">Closed at</div>
-                  <div className="mt-1 text-sm font-semibold">{new Date((trade as any).closed_at + 'Z').toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
-                  <div className="text-xs text-[#64748B]">{new Date((trade as any).closed_at + 'Z').toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</div>
+                <div className="flex items-center gap-2 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] px-4 py-2.5">
+                  <span className="text-base">🔒</span>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Closed at</div>
+                    <div className="text-sm font-bold text-[#0F172A]">
+                      {new Date((trade as any).closed_at + 'Z').toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      <span className="ml-1.5 font-normal text-[#64748B]">{new Date((trade as any).closed_at + 'Z').toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
